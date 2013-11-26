@@ -32,6 +32,7 @@
 #include "voice.h"
 #include "platform.h"
 #include "platform_api.h"
+#include "voice_extn.h"
 
 #define AUDIO_PARAMETER_KEY_VSID        "vsid"
 #define AUDIO_PARAMETER_KEY_CALL_STATE  "call_state"
@@ -63,7 +64,7 @@ struct pcm_config pcm_config_incall_music = {
 
 extern int start_call(struct audio_device *adev, audio_usecase_t usecase_id);
 extern int stop_call(struct audio_device *adev, audio_usecase_t usecase_id);
-int voice_extn_update_calls(struct audio_device *adev);
+int voice_extn_is_in_call(struct audio_device *adev, bool *in_call);
 
 static bool is_valid_call_state(int call_state)
 {
@@ -130,104 +131,7 @@ static uint32_t get_session_id_with_state(struct audio_device *adev,
     return session_id;
 }
 
-int voice_extn_get_active_session_id(struct audio_device *adev,
-                                     uint32_t *session_id)
-{
-    *session_id = get_session_id_with_state(adev, CALL_ACTIVE);
-    return 0;
-}
-
-int voice_extn_is_in_call(struct audio_device *adev, bool *in_call)
-{
-    struct voice_session *session = NULL;
-    int i = 0;
-    *in_call = false;
-
-    for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
-        session = &adev->voice.session[i];
-        if(session->state.current != CALL_INACTIVE){
-            *in_call = true;
-            break;
-        }
-    }
-
-    return 0;
-}
-
-static int voice_extn_update_call_states(struct audio_device *adev,
-                                    const uint32_t vsid, const int call_state)
-{
-    struct voice_session *session = NULL;
-    int i = 0;
-    bool is_in_call;
-
-    for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
-        if (vsid == adev->voice.session[i].vsid) {
-            session = &adev->voice.session[i];
-            break;
-        }
-    }
-
-    if (session) {
-        session->state.new = call_state;
-        voice_extn_is_in_call(adev, &is_in_call);
-        ALOGD("%s is_in_call:%d mode:%d\n", __func__, is_in_call, adev->mode);
-        if (is_in_call || adev->mode == AUDIO_MODE_IN_CALL) {
-            /* Device routing is not triggered for voice calls on the subsequent
-             * subs, Hence update the call states if voice call is already
-             * active on other sub.
-             */
-            voice_extn_update_calls(adev);
-        }
-    } else {
-        return -EINVAL;
-    }
-
-    return 0;
-
-}
-
-void voice_extn_init(struct audio_device *adev)
-{
-    adev->voice.session[VOICE_SESS_IDX].vsid =  VOICE_VSID;
-    adev->voice.session[VOICE2_SESS_IDX].vsid = VOICE2_VSID;
-    adev->voice.session[VOLTE_SESS_IDX].vsid =  VOLTE_VSID;
-    adev->voice.session[QCHAT_SESS_IDX].vsid =  QCHAT_VSID;
-}
-
-int voice_extn_get_session_from_use_case(struct audio_device *adev,
-                                               const audio_usecase_t usecase_id,
-                                               struct voice_session **session)
-{
-
-    switch(usecase_id)
-    {
-    case USECASE_VOICE_CALL:
-        *session = &adev->voice.session[VOICE_SESS_IDX];
-        break;
-
-    case USECASE_VOICE2_CALL:
-        *session = &adev->voice.session[VOICE2_SESS_IDX];
-        break;
-
-    case USECASE_VOLTE_CALL:
-        *session = &adev->voice.session[VOLTE_SESS_IDX];
-        break;
-
-    case USECASE_QCHAT_CALL:
-        *session = &adev->voice.session[QCHAT_SESS_IDX];
-        break;
-
-    default:
-        ALOGE("%s: Invalid usecase_id:%d\n", __func__, usecase_id);
-        *session = NULL;
-        return -EINVAL;
-    }
-
-    return 0;
-}
-
-int voice_extn_update_calls(struct audio_device *adev)
+static int update_calls(struct audio_device *adev)
 {
     int i = 0;
     audio_usecase_t usecase_id = 0;
@@ -255,8 +159,9 @@ int voice_extn_update_calls(struct audio_device *adev)
                 if(ret < 0) {
                     ALOGE("%s: voice_start_call() failed for usecase: %d\n",
                           __func__, usecase_id);
+                } else {
+                    session->state.current = session->state.new;
                 }
-                session->state.current = session->state.new;
                 break;
 
             case CALL_HOLD:
@@ -292,8 +197,9 @@ int voice_extn_update_calls(struct audio_device *adev)
                 if(ret < 0) {
                     ALOGE("%s: voice_end_call() failed for usecase: %d\n",
                           __func__, usecase_id);
+                } else {
+                    session->state.current = session->state.new;
                 }
-                session->state.current = session->state.new;
                 break;
 
             default:
@@ -358,6 +264,136 @@ int voice_extn_update_calls(struct audio_device *adev)
     return ret;
 }
 
+static int update_call_states(struct audio_device *adev,
+                                    const uint32_t vsid, const int call_state)
+{
+    struct voice_session *session = NULL;
+    int i = 0;
+    bool is_in_call;
+
+    for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
+        if (vsid == adev->voice.session[i].vsid) {
+            session = &adev->voice.session[i];
+            break;
+        }
+    }
+
+    if (session) {
+        session->state.new = call_state;
+        voice_extn_is_in_call(adev, &is_in_call);
+        ALOGD("%s is_in_call:%d mode:%d\n", __func__, is_in_call, adev->mode);
+        if (is_in_call || adev->mode == AUDIO_MODE_IN_CALL) {
+            /* Device routing is not triggered for voice calls on the subsequent
+             * subs, Hence update the call states if voice call is already
+             * active on other sub.
+             */
+            update_calls(adev);
+        }
+    } else {
+        return -EINVAL;
+    }
+
+    return 0;
+
+}
+
+int voice_extn_get_active_session_id(struct audio_device *adev,
+                                     uint32_t *session_id)
+{
+    *session_id = get_session_id_with_state(adev, CALL_ACTIVE);
+    return 0;
+}
+
+int voice_extn_is_in_call(struct audio_device *adev, bool *in_call)
+{
+    struct voice_session *session = NULL;
+    int i = 0;
+    *in_call = false;
+
+    for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
+        session = &adev->voice.session[i];
+        if(session->state.current != CALL_INACTIVE){
+            *in_call = true;
+            break;
+        }
+    }
+
+    return 0;
+}
+
+void voice_extn_init(struct audio_device *adev)
+{
+    adev->voice.session[VOICE_SESS_IDX].vsid =  VOICE_VSID;
+    adev->voice.session[VOICE2_SESS_IDX].vsid = VOICE2_VSID;
+    adev->voice.session[VOLTE_SESS_IDX].vsid =  VOLTE_VSID;
+    adev->voice.session[QCHAT_SESS_IDX].vsid =  QCHAT_VSID;
+}
+
+int voice_extn_get_session_from_use_case(struct audio_device *adev,
+                                         const audio_usecase_t usecase_id,
+                                         struct voice_session **session)
+{
+
+    switch(usecase_id)
+    {
+    case USECASE_VOICE_CALL:
+        *session = &adev->voice.session[VOICE_SESS_IDX];
+        break;
+
+    case USECASE_VOICE2_CALL:
+        *session = &adev->voice.session[VOICE2_SESS_IDX];
+        break;
+
+    case USECASE_VOLTE_CALL:
+        *session = &adev->voice.session[VOLTE_SESS_IDX];
+        break;
+
+    case USECASE_QCHAT_CALL:
+        *session = &adev->voice.session[QCHAT_SESS_IDX];
+        break;
+
+    default:
+        ALOGE("%s: Invalid usecase_id:%d\n", __func__, usecase_id);
+        *session = NULL;
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+int voice_extn_start_call(struct audio_device *adev)
+{
+    /* Start voice calls on sessions whose call state has been
+     * udpated.
+     */
+    ALOGV("%s: enter:", __func__);
+    return update_calls(adev);
+}
+
+int voice_extn_stop_call(struct audio_device *adev)
+{
+    int i;
+    int ret = 0;
+
+    ALOGV("%s: enter:", __func__);
+
+    /* If BT device is enabled and voice calls are ended, telephony will call
+     * set_mode(AUDIO_MODE_NORMAL) which will trigger audio policy manager to
+     * set routing with device BT A2DP profile. Hence end all voice calls when
+     * set_mode(AUDIO_MODE_NORMAL) before BT A2DP profile is selected.
+     */
+    if (adev->mode == AUDIO_MODE_NORMAL) {
+        ALOGD("%s: end all calls", __func__);
+        for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
+            adev->voice.session[i].state.new = CALL_INACTIVE;
+        }
+
+        ret = update_calls(adev);
+    }
+
+    return ret;
+}
+
 int voice_extn_set_parameters(struct audio_device *adev,
                               struct str_parms *parms)
 {
@@ -375,7 +411,6 @@ int voice_extn_set_parameters(struct audio_device *adev,
         ret = str_parms_get_int(parms, AUDIO_PARAMETER_KEY_CALL_STATE, &value);
         if (ret >= 0) {
             call_state = value;
-            //validate callstate
         } else {
             ALOGE("%s: call_state key not found", __func__);
             ret = -EINVAL;
@@ -383,11 +418,10 @@ int voice_extn_set_parameters(struct audio_device *adev,
         }
 
         if (is_valid_vsid(vsid) && is_valid_call_state(call_state)) {
-            pthread_mutex_lock(&adev->lock);
-            voice_extn_update_call_states(adev, vsid, call_state);
-            pthread_mutex_unlock(&adev->lock);
+            ret = update_call_states(adev, vsid, call_state);
         } else {
-            ALOGE("%s: invalid vsid or call_state", __func__);
+            ALOGE("%s: invalid vsid:%x or call_state:%d",
+                  __func__, vsid, call_state);
             ret = -EINVAL;
             goto done;
         }
@@ -398,6 +432,20 @@ int voice_extn_set_parameters(struct audio_device *adev,
 done:
     ALOGV("%s: exit with code(%d)", __func__, ret);
     return ret;
+}
+
+void voice_extn_out_get_parameters(struct stream_out *out,
+                                   struct str_parms *query,
+                                   struct str_parms *reply)
+{
+    voice_extn_compress_voip_out_get_parameters(out, query, reply);
+}
+
+void voice_extn_in_get_parameters(struct stream_in *in,
+                                  struct str_parms *query,
+                                  struct str_parms *reply)
+{
+    voice_extn_compress_voip_in_get_parameters(in, query, reply);
 }
 
 int voice_extn_check_and_set_incall_music_usecase(struct audio_device *adev,

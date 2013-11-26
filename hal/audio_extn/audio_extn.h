@@ -95,7 +95,7 @@ void hw_info_append_hw_type(void *hw_info, snd_device_t snd_device,
 
 #ifndef AUDIO_LISTEN_ENABLED
 
-#define audio_extn_listen_init(adev)                            (0)
+#define audio_extn_listen_init(adev, snd_card)                  (0)
 #define audio_extn_listen_deinit(adev)                          (0)
 #define audio_extn_listen_update_status(uc_info, event)         (0)
 #define audio_extn_listen_set_parameters(adev, parms)           (0)
@@ -103,17 +103,17 @@ void hw_info_append_hw_type(void *hw_info, snd_device_t snd_device,
 #else
 
 enum listen_event_type {
-    LISTEN_EVENT_AUDIO_CAPTURE_INACTIVE,
-    LISTEN_EVENT_AUDIO_CAPTURE_ACTIVE,
+    LISTEN_EVENT_SND_DEVICE_FREE,
+    LISTEN_EVENT_SND_DEVICE_BUSY
 };
 typedef enum listen_event_type listen_event_type_t;
 
-int audio_extn_listen_init(struct audio_device *adev);
+int audio_extn_listen_init(struct audio_device *adev, unsigned int snd_card);
 void audio_extn_listen_deinit(struct audio_device *adev);
-void audio_extn_listen_update_status(struct audio_usecase *uc_info,
-        listen_event_type_t event);
+void audio_extn_listen_update_status(snd_device_t snd_device,
+                                     listen_event_type_t event);
 void audio_extn_listen_set_parameters(struct audio_device *adev,
-                                        struct str_parms *parms);
+                                      struct str_parms *parms);
 
 #endif /* AUDIO_LISTEN_ENABLED */
 
@@ -135,6 +135,36 @@ void audio_extn_spkr_prot_init(void *adev);
 int audio_extn_spkr_prot_start_processing(snd_device_t snd_device);
 void audio_extn_spkr_prot_stop_processing();
 bool audio_extn_spkr_prot_is_enabled();
+#endif
+
+#ifndef COMPRESS_CAPTURE_ENABLED
+#define audio_extn_compr_cap_init(adev,in)                (0)
+#define audio_extn_compr_cap_enabled()                    (0)
+#define audio_extn_compr_cap_format_supported(format)     (0)
+#define audio_extn_compr_cap_usecase_supported(usecase)   (0)
+#define audio_extn_compr_cap_get_buffer_size(format)      (0)
+#define audio_extn_compr_cap_read(in, buffer, bytes)      (0)
+#define audio_extn_compr_cap_deinit()                     (0)
+#else
+void audio_extn_compr_cap_init(struct audio_device *adev,
+                                    struct stream_in *in);
+bool audio_extn_compr_cap_enabled();
+bool audio_extn_compr_cap_format_supported(audio_format_t format);
+bool audio_extn_compr_cap_usecase_supported(audio_usecase_t usecase);
+size_t audio_extn_compr_cap_get_buffer_size(audio_format_t format);
+size_t audio_extn_compr_cap_read(struct stream_in *in,
+                                        void *buffer, size_t bytes);
+void audio_extn_compr_cap_deinit();
+#endif
+
+#ifndef DS1_DOLBY_DDP_ENABLED
+#define audio_extn_dolby_is_supported_format(format)    (0)
+#define audio_extn_dolby_get_snd_codec_id(format)       (0)
+#define audio_extn_dolby_set_DMID(adev)                 (0)
+#else
+bool audio_extn_dolby_is_supported_format(audio_format_t format);
+int audio_extn_dolby_get_snd_codec_id(audio_format_t format);
+int audio_extn_dolby_set_DMID(struct audio_device *adev);
 #endif
 
 #endif /* AUDIO_EXTN_H */
