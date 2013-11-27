@@ -18,6 +18,9 @@ endif
 ifneq ($(filter msm8226,$(TARGET_BOARD_PLATFORM)),)
   LOCAL_CFLAGS := -DPLATFORM_MSM8x26
 endif
+ifneq ($(filter apq8084,$(TARGET_BOARD_PLATFORM)),)
+  LOCAL_CFLAGS := -DPLATFORM_APQ8084
+endif
 endif
 
 LOCAL_SRC_FILES := \
@@ -54,11 +57,15 @@ endif
 ifneq ($(strip $(AUDIO_FEATURE_DISABLED_MULTI_VOICE_SESSIONS)),true)
     LOCAL_CFLAGS += -DMULTI_VOICE_SESSION_ENABLED
     LOCAL_SRC_FILES += voice_extn/voice_extn.c
-    LOCAL_C_INCLUDES += $(LOCAL_PATH)/voice_extn
     LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 ifneq ($(strip $(AUDIO_FEATURE_DISABLED_INCALL_MUSIC)),true)
     LOCAL_CFLAGS += -DINCALL_MUSIC_ENABLED
+endif
+
+ifneq ($(strip $(AUDIO_FEATURE_DISABLED_COMPRESS_VOIP)),true)
+    LOCAL_CFLAGS += -DCOMPRESS_VOIP_ENABLED
+    LOCAL_SRC_FILES += voice_extn/compress_voip.c
 endif
 endif
 
@@ -75,6 +82,16 @@ ifdef MULTIPLE_HW_VARIANTS_ENABLED
   LOCAL_SRC_FILES += $(AUDIO_PLATFORM)/hw_info.c
 endif
 
+ifneq ($(strip $(AUDIO_FEATURE_DISABLED_COMPRESS_CAPTURE)),true)
+    LOCAL_CFLAGS += -DCOMPRESS_CAPTURE_ENABLED
+    LOCAL_SRC_FILES += audio_extn/compress_capture.c
+endif
+
+ifneq ($(strip $(AUDIO_FEATURE_DISABLED_DS1_DOLBY_DDP)),true)
+    LOCAL_CFLAGS += -DDS1_DOLBY_DDP_ENABLED
+    LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+endif
+
 LOCAL_SHARED_LIBRARIES := \
 	liblog \
 	libcutils \
@@ -89,7 +106,8 @@ LOCAL_C_INCLUDES += \
 	$(call include-path-for, audio-route) \
 	$(call include-path-for, audio-effects) \
 	$(LOCAL_PATH)/$(AUDIO_PLATFORM) \
-	$(LOCAL_PATH)/audio_extn
+	$(LOCAL_PATH)/audio_extn \
+	$(LOCAL_PATH)/voice_extn
 
 ifeq ($(strip $(AUDIO_FEATURE_ENABLED_LISTEN)),true)
     LOCAL_CFLAGS += -DAUDIO_LISTEN_ENABLED

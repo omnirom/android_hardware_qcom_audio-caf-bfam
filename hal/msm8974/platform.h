@@ -80,15 +80,23 @@ enum {
     /* Capture devices */
     SND_DEVICE_IN_BEGIN = SND_DEVICE_OUT_END,
     SND_DEVICE_IN_HANDSET_MIC  = SND_DEVICE_IN_BEGIN,
-    SND_DEVICE_IN_HANDSET_DMIC,
-    SND_DEVICE_IN_SPEAKER_MIC,
-    SND_DEVICE_IN_SPEAKER_DMIC,
-    SND_DEVICE_IN_HEADSET_MIC,
     SND_DEVICE_IN_HANDSET_MIC_AEC,
+    SND_DEVICE_IN_HANDSET_MIC_NS,
+    SND_DEVICE_IN_HANDSET_MIC_AEC_NS,
+    SND_DEVICE_IN_HANDSET_DMIC,
     SND_DEVICE_IN_HANDSET_DMIC_AEC,
+    SND_DEVICE_IN_HANDSET_DMIC_NS,
+    SND_DEVICE_IN_HANDSET_DMIC_AEC_NS,
+    SND_DEVICE_IN_SPEAKER_MIC,
     SND_DEVICE_IN_SPEAKER_MIC_AEC,
+    SND_DEVICE_IN_SPEAKER_MIC_NS,
+    SND_DEVICE_IN_SPEAKER_MIC_AEC_NS,
+    SND_DEVICE_IN_SPEAKER_DMIC,
     SND_DEVICE_IN_SPEAKER_DMIC_AEC,
-    SND_DEVICE_IN_HEADSET_MIC_AEC,
+    SND_DEVICE_IN_SPEAKER_DMIC_NS,
+    SND_DEVICE_IN_SPEAKER_DMIC_AEC_NS,
+    SND_DEVICE_IN_HEADSET_MIC,
+    SND_DEVICE_IN_HEADSET_MIC_FLUENCE,
     SND_DEVICE_IN_VOICE_SPEAKER_MIC,
     SND_DEVICE_IN_VOICE_HEADSET_MIC,
     SND_DEVICE_IN_HDMI_MIC,
@@ -102,6 +110,7 @@ enum {
     SND_DEVICE_IN_VOICE_TTY_VCO_HANDSET_MIC,
     SND_DEVICE_IN_VOICE_TTY_HCO_HEADSET_MIC,
     SND_DEVICE_IN_VOICE_REC_MIC,
+    SND_DEVICE_IN_VOICE_REC_MIC_NS,
     SND_DEVICE_IN_VOICE_REC_DMIC_STEREO,
     SND_DEVICE_IN_VOICE_REC_DMIC_FLUENCE,
     SND_DEVICE_IN_USB_HEADSET_MIC,
@@ -127,6 +136,11 @@ enum {
 #define DEFAULT_VOLUME_RAMP_DURATION_MS 20
 #define MIXER_PATH_MAX_LENGTH 100
 
+#define MAX_VOL_INDEX 5
+#define MIN_VOL_INDEX 0
+#define percent_to_index(val, min, max) \
+            ((val) * ((max) - (min)) * 0.01 + (min) + .5)
+
 /*
  * tinyAlsa library interprets period size as number of frames
  * one frame = channel_count * sizeof (pcm sample)
@@ -148,35 +162,76 @@ enum {
 #define AUDIO_CAPTURE_PERIOD_DURATION_MSEC 20
 #define AUDIO_CAPTURE_PERIOD_COUNT 2
 
+#define DEVICE_NAME_MAX_SIZE 128
+#define HW_INFO_ARRAY_MAX_SIZE 32
+
 #define DEEP_BUFFER_PCM_DEVICE 0
 #define AUDIO_RECORD_PCM_DEVICE 0
 #define MULTIMEDIA2_PCM_DEVICE 1
-#define VOICE_CALL_PCM_DEVICE 2
 #define FM_PLAYBACK_PCM_DEVICE 5
 #define FM_CAPTURE_PCM_DEVICE  6
 #define INCALL_MUSIC_UPLINK_PCM_DEVICE 1
 #define INCALL_MUSIC_UPLINK2_PCM_DEVICE 16
 #define SPKR_PROT_CALIB_RX_PCM_DEVICE 5
 #define SPKR_PROT_CALIB_TX_PCM_DEVICE 22
-
-#ifdef PLATFORM_MSM8x26
-#define VOICE2_CALL_PCM_DEVICE 14
-#define VOLTE_CALL_PCM_DEVICE 17
-#define QCHAT_CALL_PCM_DEVICE 18
-#else
-#define VOICE2_CALL_PCM_DEVICE 13
-#define VOLTE_CALL_PCM_DEVICE 14
-#define QCHAT_CALL_PCM_DEVICE 20
-#endif
-
 #define PLAYBACK_OFFLOAD_DEVICE 9
+#define COMPRESS_VOIP_CALL_PCM_DEVICE 3
 
 #ifdef PLATFORM_MSM8610
 #define LOWLATENCY_PCM_DEVICE 12
 #else
 #define LOWLATENCY_PCM_DEVICE 15
 #endif
+#define COMPRESS_CAPTURE_DEVICE 19
 
-#define DEVICE_NAME_MAX_SIZE 128
-#define HW_INFO_ARRAY_MAX_SIZE 32
+#ifdef PLATFORM_MSM8x26
+#define VOICE_CALL_PCM_DEVICE 2
+#define VOICE2_CALL_PCM_DEVICE 14
+#define VOLTE_CALL_PCM_DEVICE 17
+#define QCHAT_CALL_PCM_DEVICE 18
+#elif PLATFORM_APQ8084
+#define VOICE_CALL_PCM_DEVICE 20
+#define VOICE2_CALL_PCM_DEVICE 13
+#define VOLTE_CALL_PCM_DEVICE 21
+#define QCHAT_CALL_PCM_DEVICE 06
+#else
+#define VOICE_CALL_PCM_DEVICE 2
+#define VOICE2_CALL_PCM_DEVICE 13
+#define VOLTE_CALL_PCM_DEVICE 14
+#define QCHAT_CALL_PCM_DEVICE 20
+#endif
+
+#define LIB_CSD_CLIENT "libcsd-client.so"
+/* CSD-CLIENT related functions */
+typedef int (*init_t)();
+typedef int (*deinit_t)();
+typedef int (*disable_device_t)();
+typedef int (*enable_device_t)(int, int, uint32_t);
+typedef int (*volume_t)(uint32_t, int);
+typedef int (*mic_mute_t)(uint32_t, int);
+typedef int (*slow_talk_t)(uint32_t, uint8_t);
+typedef int (*start_voice_t)(uint32_t);
+typedef int (*stop_voice_t)(uint32_t);
+typedef int (*start_playback_t)(uint32_t);
+typedef int (*stop_playback_t)(uint32_t);
+typedef int (*start_record_t)(uint32_t, int);
+typedef int (*stop_record_t)(uint32_t, int);
+/* CSD Client structure */
+struct csd_data {
+    void *csd_client;
+    init_t init;
+    deinit_t deinit;
+    disable_device_t disable_device;
+    enable_device_t enable_device;
+    volume_t volume;
+    mic_mute_t mic_mute;
+    slow_talk_t slow_talk;
+    start_voice_t start_voice;
+    stop_voice_t stop_voice;
+    start_playback_t start_playback;
+    stop_playback_t stop_playback;
+    start_record_t start_record;
+    stop_record_t stop_record;
+};
+
 #endif // QCOM_AUDIO_PLATFORM_H

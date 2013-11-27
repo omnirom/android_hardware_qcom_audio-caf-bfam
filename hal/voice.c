@@ -41,20 +41,7 @@ struct pcm_config pcm_config_voice_call = {
     .format = PCM_FORMAT_S16_LE,
 };
 
-extern struct audio_usecase *get_usecase_from_list(struct audio_device *adev,
-                                                   audio_usecase_t uc_id);
-extern int disable_snd_device(struct audio_device *adev,
-                              snd_device_t snd_device,
-                              bool update_mixer);
-extern int disable_audio_route(struct audio_device *adev,
-                               struct audio_usecase *usecase,
-                               bool update_mixer);
-
-extern int disable_snd_device(struct audio_device *adev,
-                              snd_device_t snd_device,
-                              bool update_mixer);
-extern int select_devices(struct audio_device *adev,
-                          audio_usecase_t uc_id);
+extern const char * const use_case_table[AUDIO_USECASE_MAX];
 
 static struct voice_session *voice_get_session_from_use_case(struct audio_device *adev,
                               audio_usecase_t usecase_id)
@@ -76,12 +63,12 @@ int stop_call(struct audio_device *adev, audio_usecase_t usecase_id)
     struct audio_usecase *uc_info;
     struct voice_session *session = NULL;
 
-    ALOGD("%s: enter", __func__);
+    ALOGD("%s: enter usecase:%s", __func__, use_case_table[usecase_id]);
 
     session = (struct voice_session *)voice_get_session_from_use_case(adev, usecase_id);
     session->state.current = CALL_INACTIVE;
 
-    ret = platform_stop_voice_call(adev->platform);
+    ret = platform_stop_voice_call(adev->platform, session->vsid);
 
     /* 1. Close the PCM devices */
     if (session->pcm_rx) {
@@ -107,9 +94,6 @@ int stop_call(struct audio_device *adev, audio_usecase_t usecase_id)
     disable_snd_device(adev, uc_info->out_snd_device, false);
     disable_snd_device(adev, uc_info->in_snd_device, true);
 
-    audio_extn_listen_update_status(uc_info,
-            LISTEN_EVENT_AUDIO_CAPTURE_INACTIVE);
-
     list_remove(&uc_info->list);
     free(uc_info);
 
@@ -124,10 +108,10 @@ int start_call(struct audio_device *adev, audio_usecase_t usecase_id)
     int pcm_dev_rx_id, pcm_dev_tx_id;
     struct voice_session *session = NULL;
     struct pcm_config voice_config = pcm_config_voice_call;
-    ALOGD("%s: enter", __func__);
+
+    ALOGD("%s: enter usecase:%s", __func__, use_case_table[usecase_id]);
 
     session = (struct voice_session *)voice_get_session_from_use_case(adev, usecase_id);
-
     uc_info = (struct audio_usecase *)calloc(1, sizeof(struct audio_usecase));
     uc_info->id = usecase_id;
     uc_info->type = VOICE_CALL;
@@ -139,9 +123,6 @@ int start_call(struct audio_device *adev, audio_usecase_t usecase_id)
     list_add_tail(&adev->usecase_list, &uc_info->list);
 
     select_devices(adev, usecase_id);
-
-    audio_extn_listen_update_status(uc_info,
-            LISTEN_EVENT_AUDIO_CAPTURE_ACTIVE);
 
     pcm_dev_rx_id = platform_get_pcm_device_id(uc_info->id, PCM_PLAYBACK);
     pcm_dev_tx_id = platform_get_pcm_device_id(uc_info->id, PCM_CAPTURE);
@@ -179,7 +160,7 @@ int start_call(struct audio_device *adev, audio_usecase_t usecase_id)
 
     voice_set_volume(adev, adev->voice.volume);
 
-    ret = platform_start_voice_call(adev->platform);
+    ret = platform_start_voice_call(adev->platform, session->vsid);
     if (ret < 0) {
         ALOGE("%s: platform_start_voice_call error %d\n", __func__, ret);
         goto error_start_voice;
@@ -244,7 +225,6 @@ int voice_check_and_set_incall_rec_usecase(struct audio_device *adev,
             return ret;
         }
 
-        in->config = pcm_config_voice_call;
         session_id = voice_get_active_session_id(adev);
         ret = platform_set_incall_recoding_session_id(adev->platform,
                                                       session_id);
@@ -274,14 +254,12 @@ int voice_set_mic_mute(struct audio_device *adev, bool state)
 {
     int err = 0;
 
-    pthread_mutex_lock(&adev->lock);
+    adev->voice.mic_mute = state;
+    if (adev->mode == AUDIO_MODE_IN_CALL)
+        err = platform_set_mic_mute(adev->platform, state);
+    if (adev->mode == AUDIO_MODE_IN_COMMUNICATION)
+        err = voice_extn_compress_voip_set_mic_mute(adev, state);
 
-    err = platform_set_mic_mute(adev->platform, state);
-    if (!err) {
-        adev->voice.mic_mute = state;
-    }
-
-    pthread_mutex_unlock(&adev->lock);
     return err;
 }
 
@@ -311,6 +289,9 @@ int voice_set_volume(struct audio_device *adev, float volume)
 
         err = platform_set_voice_volume(adev->platform, vol);
     }
+    if (adev->mode == AUDIO_MODE_IN_COMMUNICATION)
+        err = voice_extn_compress_voip_set_volume(adev, volume);
+
 
     return err;
 }
@@ -319,7 +300,7 @@ int voice_start_call(struct audio_device *adev)
 {
     int ret = 0;
 
-    ret = voice_extn_update_calls(adev);
+    ret = voice_extn_start_call(adev);
     if (ret == -ENOSYS) {
         ret = start_call(adev, USECASE_VOICE_CALL);
     }
@@ -331,7 +312,7 @@ int voice_stop_call(struct audio_device *adev)
 {
     int ret = 0;
 
-    ret = voice_extn_update_calls(adev);
+    ret = voice_extn_stop_call(adev);
     if (ret == -ENOSYS) {
         ret = stop_call(adev, USECASE_VOICE_CALL);
     }
@@ -349,6 +330,7 @@ int voice_set_parameters(struct audio_device *adev, struct str_parms *parms)
     ALOGV("%s: enter: %s", __func__, str_parms_to_str(parms));
 
     voice_extn_set_parameters(adev, parms);
+    voice_extn_compress_voip_set_parameters(adev, parms);
 
     ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_TTY_MODE, value, sizeof(value));
     if (ret >= 0) {
@@ -367,7 +349,6 @@ int voice_set_parameters(struct audio_device *adev, struct str_parms *parms)
             goto done;
         }
 
-        pthread_mutex_lock(&adev->lock);
         if (tty_mode != adev->voice.tty_mode) {
             adev->voice.tty_mode = tty_mode;
             adev->acdb_settings = (adev->acdb_settings & TTY_MODE_CLEAR) | tty_mode;
@@ -375,7 +356,6 @@ int voice_set_parameters(struct audio_device *adev, struct str_parms *parms)
                 //todo: what about voice2, volte and qchat usecases?
                 select_devices(adev, USECASE_VOICE_CALL);
         }
-        pthread_mutex_unlock(&adev->lock);
     }
 
 done:

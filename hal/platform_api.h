@@ -32,8 +32,11 @@ int platform_switch_voice_call_device_pre(void *platform);
 int platform_switch_voice_call_device_post(void *platform,
                                            snd_device_t out_snd_device,
                                            snd_device_t in_snd_device);
-int platform_start_voice_call(void *platform);
-int platform_stop_voice_call(void *platform);
+int platform_switch_voice_call_usecase_route_post(void *platform,
+                                                  snd_device_t out_snd_device,
+                                                  snd_device_t in_snd_device);
+int platform_start_voice_call(void *platform, uint32_t vsid);
+int platform_stop_voice_call(void *platform, uint32_t vsid);
 int platform_set_voice_volume(void *platform, int volume);
 int platform_set_mic_mute(void *platform, bool state);
 snd_device_t platform_get_output_snd_device(void *platform, audio_devices_t devices);
@@ -47,6 +50,8 @@ int platform_set_incall_recoding_session_id(void *platform, uint32_t session_id)
 
 /* returns the latency for a usecase in Us */
 int64_t platform_render_latency(audio_usecase_t usecase);
-int platform_get_usecase_from_source(int source);
+int platform_update_usecase_from_source(int source, audio_usecase_t usecase);
+
+bool platform_listen_update_status(snd_device_t snd_device);
 
 #endif // QCOM_AUDIO_PLATFORM_API_H
