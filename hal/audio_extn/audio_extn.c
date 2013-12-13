@@ -55,7 +55,12 @@ static struct audio_extn_module aextnmod = {
 void audio_extn_fm_set_parameters(struct audio_device *adev,
                                    struct str_parms *parms);
 #endif
-
+#ifndef HFP_ENABLED
+void audio_extn_hfp_set_parameters(adev, parms) (0)
+#else
+void audio_extn_hfp_set_parameters(struct audio_device *adev,
+                                           struct str_parms *parms);
+#endif
 #ifndef SSR_ENABLED
 #define audio_extn_ssr_get_parameters(query, reply) (0)
 #else
@@ -114,18 +119,18 @@ void audio_extn_set_anc_parameters(struct audio_device *adev,
             aextnmod.anc_enabled = true;
         else
             aextnmod.anc_enabled = false;
-    }
 
-    list_for_each(node, &adev->usecase_list) {
-        usecase = node_to_item(node, struct audio_usecase, list);
-        if (usecase->type == PCM_PLAYBACK) {
-            if (usecase->stream.out->devices == \
-                AUDIO_DEVICE_OUT_WIRED_HEADPHONE ||
-                usecase->stream.out->devices ==  \
-                AUDIO_DEVICE_OUT_WIRED_HEADSET) {
-                select_devices(adev, usecase->id);
-                ALOGV("%s: switching device", __func__);
-                break;
+        list_for_each(node, &adev->usecase_list) {
+            usecase = node_to_item(node, struct audio_usecase, list);
+            if (usecase->type == PCM_PLAYBACK) {
+                if (usecase->stream.out->devices == \
+                    AUDIO_DEVICE_OUT_WIRED_HEADPHONE ||
+                    usecase->stream.out->devices ==  \
+                    AUDIO_DEVICE_OUT_WIRED_HEADSET) {
+                        select_devices(adev, usecase->id);
+                        ALOGV("%s: switching device", __func__);
+                        break;
+                }
             }
         }
     }
@@ -219,6 +224,7 @@ void audio_extn_set_parameters(struct audio_device *adev,
    audio_extn_set_afe_proxy_parameters(parms);
    audio_extn_fm_set_parameters(adev, parms);
    audio_extn_listen_set_parameters(adev, parms);
+   audio_extn_hfp_set_parameters(adev, parms);
 }
 
 void audio_extn_get_parameters(const struct audio_device *adev,
