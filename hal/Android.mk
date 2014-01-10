@@ -26,6 +26,7 @@ endif
 LOCAL_SRC_FILES := \
 	audio_hw.c \
 	voice.c \
+	platform_info.c \
 	$(AUDIO_PLATFORM)/platform.c
 
 ifneq ($(BOARD_USES_CUSTOM_AUDIO_PLATFORM_PATH),)
@@ -113,11 +114,13 @@ LOCAL_SHARED_LIBRARIES := \
 	libtinyalsa \
 	libtinycompress \
 	libaudioroute \
-	libdl
+	libdl \
+	libexpat
 
 LOCAL_C_INCLUDES += \
 	external/tinyalsa/include \
 	external/tinycompress/include \
+	external/expat/lib \
 	$(call include-path-for, audio-route) \
 	$(call include-path-for, audio-effects) \
 	$(LOCAL_PATH)/$(AUDIO_PLATFORM) \
