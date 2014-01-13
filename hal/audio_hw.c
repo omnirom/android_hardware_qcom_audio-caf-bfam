@@ -1,8 +1,8 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
- * Copyright (C) 2013 The Android Open Source Project
+ * Copyright (C) 2013-2014 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -113,6 +113,7 @@ const char * const use_case_table[AUDIO_USECASE_MAX] = {
     [USECASE_AUDIO_RECORD_FM_VIRTUAL] = "fm-virtual-record",
     [USECASE_AUDIO_PLAYBACK_FM] = "play-fm",
     [USECASE_AUDIO_HFP_SCO] = "hfp-sco",
+    [USECASE_AUDIO_HFP_SCO_WB] = "hfp-sco-wb",
     [USECASE_VOICE_CALL] = "voice-call",
     
     [USECASE_VOICE2_CALL] = "voice2-call",
@@ -152,6 +153,7 @@ static unsigned int audio_device_ref_count;
 
 static int set_voice_volume_l(struct audio_device *adev, float volume);
 static uint32_t get_offload_buffer_size();
+static int set_gapless_mode(struct audio_device *adev);
 
 static bool is_supported_format(audio_format_t format)
 {
@@ -368,7 +370,7 @@ static void check_usecases_codec_backend(struct audio_device *adev,
 
     list_for_each(node, &adev->usecase_list) {
         usecase = node_to_item(node, struct audio_usecase, list);
-        if (usecase->type == PCM_PLAYBACK &&
+        if (usecase->type != PCM_CAPTURE &&
                 usecase != uc_info &&
                 usecase->out_snd_device != snd_device &&
                 usecase->devices & AUDIO_DEVICE_OUT_ALL_CODEC_BACKEND) {
@@ -412,8 +414,6 @@ static void check_usecases_codec_backend(struct audio_device *adev,
                 enable_audio_route(adev, usecase, false);
             }
         }
-
-        audio_route_update_mixer(adev->audio_route);
     }
 }
 
@@ -441,7 +441,7 @@ static void check_and_route_capture_usecases(struct audio_device *adev,
 
     list_for_each(node, &adev->usecase_list) {
         usecase = node_to_item(node, struct audio_usecase, list);
-        if (usecase->type == PCM_CAPTURE &&
+        if (usecase->type != PCM_PLAYBACK &&
                 usecase != uc_info &&
                 usecase->in_snd_device != snd_device) {
             ALOGV("%s: Usecase (%s) is active on (%s) - disabling ..",
@@ -461,6 +461,12 @@ static void check_and_route_capture_usecases(struct audio_device *adev,
             usecase = node_to_item(node, struct audio_usecase, list);
             if (switch_device[usecase->id]) {
                 disable_snd_device(adev, usecase->in_snd_device, false);
+            }
+        }
+
+        list_for_each(node, &adev->usecase_list) {
+            usecase = node_to_item(node, struct audio_usecase, list);
+            if (switch_device[usecase->id]) {
                 enable_snd_device(adev, snd_device, false);
             }
         }
@@ -478,55 +484,7 @@ static void check_and_route_capture_usecases(struct audio_device *adev,
                 enable_audio_route(adev, usecase, false);
             }
         }
-
-        audio_route_update_mixer(adev->audio_route);
     }
-}
-
-static int disable_all_usecases_of_type(struct audio_device *adev,
-                                        usecase_type_t usecase_type,
-                                        bool update_mixer)
-{
-    struct audio_usecase *usecase;
-    struct listnode *node;
-    int ret = 0;
-
-    list_for_each(node, &adev->usecase_list) {
-        usecase = node_to_item(node, struct audio_usecase, list);
-        if (usecase->type == usecase_type) {
-            ALOGV("%s: usecase id %d", __func__, usecase->id);
-            ret = disable_audio_route(adev, usecase, update_mixer);
-            if (ret) {
-                ALOGE("%s: Failed to disable usecase id %d",
-                      __func__, usecase->id);
-            }
-        }
-    }
-
-    return ret;
-}
-
-static int enable_all_usecases_of_type(struct audio_device *adev,
-                                       usecase_type_t usecase_type,
-                                       bool update_mixer)
-{
-    struct audio_usecase *usecase;
-    struct listnode *node;
-    int ret = 0;
-
-    list_for_each(node, &adev->usecase_list) {
-        usecase = node_to_item(node, struct audio_usecase, list);
-        if (usecase->type == usecase_type) {
-            ALOGV("%s: usecase id %d", __func__, usecase->id);
-            ret = enable_audio_route(adev, usecase, update_mixer);
-            if (ret) {
-                ALOGE("%s: Failed to enable usecase id %d",
-                      __func__, usecase->id);
-            }
-        }
-    }
-
-    return ret;
 }
 
 /* must be called with hw device mutex locked */
@@ -555,6 +513,21 @@ static int read_hdmi_channel_masks(struct stream_out *out)
         break;
     }
     return ret;
+}
+
+static void update_devices_for_all_voice_usecases(struct audio_device *adev)
+{
+    struct listnode *node;
+    struct audio_usecase *usecase;
+
+    list_for_each(node, &adev->usecase_list) {
+        usecase = node_to_item(node, struct audio_usecase, list);
+        if (usecase->type == VOICE_CALL) {
+            ALOGV("%s: updating device for usecase:%s", __func__,
+                  use_case_table[usecase->id]);
+            select_devices(adev, usecase->id);
+        }
+    }
 }
 
 static audio_usecase_t get_voice_usecase_id_from_list(struct audio_device *adev)
@@ -593,6 +566,7 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
     struct audio_usecase *usecase = NULL;
     struct audio_usecase *vc_usecase = NULL;
     struct audio_usecase *voip_usecase = NULL;
+    struct audio_usecase *hfp_usecase = NULL;
     struct listnode *node;
     int status = 0;
 
@@ -630,6 +604,12 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
             if (voip_usecase->devices & AUDIO_DEVICE_OUT_ALL_CODEC_BACKEND) {
                     in_snd_device = voip_usecase->in_snd_device;
                     out_snd_device = voip_usecase->out_snd_device;
+            }
+        } else if (audio_extn_hfp_is_active(adev)) {
+            hfp_usecase = get_usecase_from_list(adev, USECASE_AUDIO_HFP_SCO);
+            if (hfp_usecase->devices & AUDIO_DEVICE_OUT_ALL_CODEC_BACKEND) {
+                   in_snd_device = hfp_usecase->in_snd_device;
+                   out_snd_device = hfp_usecase->out_snd_device;
             }
         }
         if (usecase->type == PCM_PLAYBACK) {
@@ -676,7 +656,6 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
      */
     if (usecase->type == VOICE_CALL || usecase->type == VOIP_CALL) {
         status = platform_switch_voice_call_device_pre(adev->platform);
-        disable_all_usecases_of_type(adev, VOICE_CALL, true);
     }
 
     /* Disable current sound devices */
@@ -712,10 +691,7 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
     usecase->in_snd_device = in_snd_device;
     usecase->out_snd_device = out_snd_device;
 
-    if (usecase->type == VOICE_CALL || usecase->type == VOIP_CALL)
-        enable_all_usecases_of_type(adev, usecase->type, true);
-    else
-        enable_audio_route(adev, usecase, true);
+    enable_audio_route(adev, usecase, true);
 
     /* Applicable only on the targets that has external modem.
      * Enable device command should be sent to modem only after
@@ -1304,26 +1280,39 @@ static int parse_compress_metadata(struct stream_out *out, struct str_parms *par
 {
     int ret = 0;
     char value[32];
+    bool is_meta_data_params = false;
     struct compr_gapless_mdata tmp_mdata;
-
+    tmp_mdata.encoder_delay = 0;
+    tmp_mdata.encoder_padding = 0;
     if (!out || !parms) {
+        ALOGE("%s: return invalid ",__func__);
         return -EINVAL;
     }
 
+    ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_SAMPLE_RATE, value, sizeof(value));
+    if(ret >= 0)
+        is_meta_data_params = true;
+    ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_NUM_CHANNEL, value, sizeof(value));
+    if(ret >= 0 )
+        is_meta_data_params = true;
+    ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_AVG_BIT_RATE, value, sizeof(value));
+    if(ret >= 0 )
+        is_meta_data_params = true;
     ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_DELAY_SAMPLES, value, sizeof(value));
     if (ret >= 0) {
+        is_meta_data_params = true;
         tmp_mdata.encoder_delay = atoi(value); //whats a good limit check?
-    } else {
-        return -EINVAL;
     }
-
     ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_PADDING_SAMPLES, value, sizeof(value));
     if (ret >= 0) {
+        is_meta_data_params = true;
         tmp_mdata.encoder_padding = atoi(value);
-    } else {
-        return -EINVAL;
     }
 
+    if(!is_meta_data_params) {
+        ALOGV("%s: Not gapless meta data params", __func__);
+        return 0;
+    }
     out->gapless_mdata = tmp_mdata;
     out->send_new_metadata = 1;
     ALOGV("%s new encoder delay %u and padding %u", __func__,
@@ -1341,14 +1330,14 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
     struct listnode *node;
     struct str_parms *parms;
     char value[32];
-    int ret, val = 0;
+    int ret = 0, val = 0, err;
     bool select_new_device = false;
 
     ALOGD("%s: enter: usecase(%d: %s) kvpairs: %s",
           __func__, out->usecase, use_case_table[out->usecase], kvpairs);
     parms = str_parms_create_str(kvpairs);
-    ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
-    if (ret >= 0) {
+    err = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
+    if (err >= 0) {
         val = atoi(value);
         pthread_mutex_lock(&out->lock);
         pthread_mutex_lock(&adev->lock);
@@ -1392,18 +1381,18 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
             if ((adev->mode == AUDIO_MODE_IN_CALL) &&
                     !voice_is_in_call(adev) &&
                     (out == adev->primary_output)) {
-                voice_start_call(adev);
+                ret = voice_start_call(adev);
             } else if ((adev->mode == AUDIO_MODE_IN_CALL) &&
                             voice_is_in_call(adev) &&
                             (out == adev->primary_output)) {
-                select_devices(adev, get_voice_usecase_id_from_list(adev));
+                update_devices_for_all_voice_usecases(adev);
             }
         }
 
         if ((adev->mode == AUDIO_MODE_NORMAL) &&
                 voice_is_in_call(adev) &&
                 (out == adev->primary_output)) {
-            voice_stop_call(adev);
+            ret = voice_stop_call(adev);
         }
 
         pthread_mutex_unlock(&adev->lock);
@@ -1416,7 +1405,9 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
         pthread_mutex_unlock(&adev->lock);
     }
     if (out->usecase == USECASE_AUDIO_PLAYBACK_OFFLOAD) {
+        pthread_mutex_lock(&out->lock);
         parse_compress_metadata(out, parms);
+        pthread_mutex_unlock(&out->lock);
     }
 
     str_parms_destroy(parms);
@@ -1821,16 +1812,16 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
     struct str_parms *parms;
     char *str;
     char value[32];
-    int ret, val = 0;
+    int ret = 0, val = 0, err;
 
     ALOGV("%s: enter: kvpairs=%s", __func__, kvpairs);
     parms = str_parms_create_str(kvpairs);
 
-    ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_INPUT_SOURCE, value, sizeof(value));
-
     pthread_mutex_lock(&in->lock);
     pthread_mutex_lock(&adev->lock);
-    if (ret >= 0) {
+
+    err = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_INPUT_SOURCE, value, sizeof(value));
+    if (err >= 0) {
         val = atoi(value);
         /* no audio source uses val == 0 */
         if ((in->source != val) && (val != 0)) {
@@ -1838,8 +1829,8 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
         }
     }
 
-    ret = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
-    if (ret >= 0) {
+    err = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
+    if (err >= 0) {
         val = atoi(value);
         if ((in->device != val) && (val != 0)) {
             in->device = val;
@@ -1992,7 +1983,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 {
     struct audio_device *adev = (struct audio_device *)dev;
     struct stream_out *out;
-    int i, ret;
+    int i, ret = 0;
 
     ALOGV("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x) flags(%#x)",
           __func__, config->sample_rate, config->channel_mask, devices, flags);
@@ -2122,6 +2113,9 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
             }
         }
 
+        //Decide if we need to use gapless mode by default
+        set_gapless_mode(adev);
+
     } else if (out->flags & AUDIO_OUTPUT_FLAG_INCALL_MUSIC) {
         ret = voice_check_and_set_incall_music_usecase(adev, out);
         if (ret != 0) {
@@ -2236,18 +2230,23 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
     char *str;
     char value[32];
     int val;
-    int ret;
+    int ret = 0, err;
 
     ALOGD("%s: enter: %s", __func__, kvpairs);
 
     pthread_mutex_lock(&adev->lock);
     parms = str_parms_create_str(kvpairs);
 
-    voice_set_parameters(adev, parms);
-    platform_set_parameters(adev->platform, parms);
+    ret = voice_set_parameters(adev, parms);
+    if (ret != 0)
+        goto done;
 
-    ret = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_BT_NREC, value, sizeof(value));
-    if (ret >= 0) {
+    ret = platform_set_parameters(adev->platform, parms);
+    if (ret != 0)
+        goto done;
+
+    err = str_parms_get_str(parms, AUDIO_PARAMETER_KEY_BT_NREC, value, sizeof(value));
+    if (err >= 0) {
         /* When set to false, HAL should disable EC and NS
          * But it is currently not supported.
          */
@@ -2257,16 +2256,16 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             adev->bluetooth_nrec = false;
     }
 
-    ret = str_parms_get_str(parms, "screen_state", value, sizeof(value));
-    if (ret >= 0) {
+    err = str_parms_get_str(parms, "screen_state", value, sizeof(value));
+    if (err >= 0) {
         if (strcmp(value, AUDIO_PARAMETER_VALUE_ON) == 0)
             adev->screen_off = false;
         else
             adev->screen_off = true;
     }
 
-    ret = str_parms_get_int(parms, "rotation", &val);
-    if (ret >= 0) {
+    err = str_parms_get_int(parms, "rotation", &val);
+    if (err >= 0) {
         bool reverse_speakers = false;
         switch(val) {
         // FIXME: note that the code below assumes that the speakers are in the correct placement
@@ -2298,8 +2297,9 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
     }
 
     audio_extn_set_parameters(adev, parms);
-    str_parms_destroy(parms);
 
+done:
+    str_parms_destroy(parms);
     pthread_mutex_unlock(&adev->lock);
     ALOGV("%s: exit with code(%d)", __func__, ret);
     return ret;
@@ -2316,7 +2316,7 @@ static char* adev_get_parameters(const struct audio_hw_device *dev,
     pthread_mutex_lock(&adev->lock);
 
     audio_extn_get_parameters(adev, query, reply);
-    voice_extn_get_parameters(adev, query, reply);
+    voice_get_parameters(adev, query, reply);
     platform_get_parameters(adev->platform, query, reply);
     str = str_parms_to_str(reply);
     str_parms_destroy(query);
@@ -2672,6 +2672,33 @@ static uint32_t get_offload_buffer_size()
     return fragment_size;
 }
 
+static int set_gapless_mode(struct audio_device *adev) {
+
+
+    char value[PROPERTY_VALUE_MAX] = {0};
+    bool gapless_enabled = false;
+    const char *mixer_ctl_name = "Compress Gapless Playback";
+    struct mixer_ctl *ctl;
+
+    ALOGV("%s:", __func__);
+    property_get("audio.offload.gapless.enabled", value, NULL);
+    gapless_enabled = atoi(value) || !strncmp("true", value, 4);
+
+    ctl = mixer_get_ctl_by_name(adev->mixer, mixer_ctl_name);
+    if (!ctl) {
+        ALOGE("%s: Could not get ctl for mixer cmd - %s",
+                               __func__, mixer_ctl_name);
+        return -EINVAL;
+    }
+
+    if (mixer_ctl_set_value(ctl, 0, gapless_enabled) < 0) {
+        ALOGE("%s: Could not set gapless mode %d",
+                       __func__, gapless_enabled);
+         return -EINVAL;
+    }
+    return 0;
+
+}
 static struct hw_module_methods_t hal_module_methods = {
     .open = adev_open,
 };
