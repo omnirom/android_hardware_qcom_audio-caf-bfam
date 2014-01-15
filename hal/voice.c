@@ -2,7 +2,7 @@
  * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  * Not a contribution.
  *
- * Copyright (C) 2013-2014 The Android Open Source Project
+ * Copyright (C) 2013 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -424,6 +424,7 @@ void voice_init(struct audio_device *adev)
     adev->voice.tty_mode = TTY_MODE_OFF;
     adev->voice.volume = 1.0f;
     adev->voice.mic_mute = false;
+    adev->voice.voice_device_set = false;
     for (i = 0; i < MAX_VOICE_SESSIONS; i++) {
         adev->voice.session[i].pcm_rx = NULL;
         adev->voice.session[i].pcm_tx = NULL;
