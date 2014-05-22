@@ -187,6 +187,7 @@ static char * device_table[SND_DEVICE_MAX] = {
     [SND_DEVICE_IN_HANDSET_STEREO_DMIC] = "handset-stereo-dmic-ef",
     [SND_DEVICE_IN_SPEAKER_STEREO_DMIC] = "speaker-stereo-dmic-ef",
     [SND_DEVICE_IN_CAPTURE_VI_FEEDBACK] = "vi-feedback",
+    [SND_DEVICE_IN_VOICE_REC_HEADSET_MIC] = "headset-mic",
 };
 
 /* ACDB IDs (audio DSP path configuration IDs) for each sound device */
@@ -260,6 +261,7 @@ static int acdb_device_table[SND_DEVICE_MAX] = {
     [SND_DEVICE_IN_HANDSET_STEREO_DMIC] = 34,
     [SND_DEVICE_IN_SPEAKER_STEREO_DMIC] = 35,
     [SND_DEVICE_IN_CAPTURE_VI_FEEDBACK] = 102,
+    [SND_DEVICE_IN_VOICE_REC_HEADSET_MIC] = 8,
 };
 
 #define DEEP_BUFFER_PLATFORM_DELAY (29*1000LL)
@@ -1050,7 +1052,9 @@ snd_device_t platform_get_input_snd_device(void *platform, audio_devices_t out_d
             snd_device = SND_DEVICE_IN_CAMCORDER_MIC;
         }
     } else if (source == AUDIO_SOURCE_VOICE_RECOGNITION) {
-        if (in_device & AUDIO_DEVICE_IN_BUILTIN_MIC) {
+        if (in_device & AUDIO_DEVICE_IN_WIRED_HEADSET) {
+            snd_device = SND_DEVICE_IN_VOICE_REC_HEADSET_MIC;
+        } else if (in_device & AUDIO_DEVICE_IN_BUILTIN_MIC) {
             if (channel_count == 2) {
                 snd_device = SND_DEVICE_IN_VOICE_REC_DMIC_STEREO;
                 adev->acdb_settings |= DMIC_FLAG;
