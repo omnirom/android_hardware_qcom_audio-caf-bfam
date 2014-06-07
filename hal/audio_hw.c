@@ -2650,6 +2650,19 @@ static int adev_open(const hw_module_t *module, const char *name,
     return 0;
 }
 
+int pcm_ioctl(struct pcm *pcm, int request, ...)
+{
+    va_list ap;
+    void * arg;
+    int pcm_fd = *(int*)pcm;
+
+    va_start(ap, request);
+    arg = va_arg(ap, void *);
+    va_end(ap);
+
+    return ioctl(pcm_fd, request, arg);
+}
+
 /* Read  offload buffer size from a property.
  * If value is not power of 2  round it to
  * power of 2.
@@ -2699,6 +2712,7 @@ static int set_gapless_mode(struct audio_device *adev) {
     return 0;
 
 }
+
 static struct hw_module_methods_t hal_module_methods = {
     .open = adev_open,
 };
