@@ -83,17 +83,5 @@ protected:
         // returns true if give output is direct output
         bool isDirectOutput(audio_io_handle_t output);
 
-        static const char* HDMI_SPKR_STR;
-
-        //parameter indicates of HDMI speakers disabled from the Qualcomm settings
-        bool mHdmiAudioDisabled;
-
-        //parameter indicates if HDMI plug in/out detected
-        bool mHdmiAudioEvent;
-
-private:
-        // Used for voip + voice concurrency usecase
-        int mPrevPhoneState;
-
 };
 };
