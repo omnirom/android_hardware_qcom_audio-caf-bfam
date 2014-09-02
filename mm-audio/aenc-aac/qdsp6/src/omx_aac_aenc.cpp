@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1072,6 +1072,7 @@ OMX_ERRORTYPE omx_aac_aenc::component_init(OMX_STRING role)
 
     nTimestamp = 0;
     ts = 0;
+    m_frame_count = 0;
     frameduration = 0;
     nNumInputBuf = 0;
     nNumOutputBuf = 0;
@@ -1438,10 +1439,12 @@ OMX_ERRORTYPE  omx_aac_aenc::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
                 }
                 drv_aac_enc_config.channels = m_aac_param.nChannels;
                 drv_aac_enc_config.sample_rate = m_aac_param.nSampleRate;
-                drv_aac_enc_config.bit_rate =  m_aac_param.nBitRate;
-                DEBUG_PRINT("aac config %lu,%lu,%lu %d\n",
+                drv_aac_enc_config.bit_rate =
+                get_updated_bit_rate(m_aac_param.nBitRate);
+                DEBUG_PRINT("aac config %lu,%lu,%lu %d updated bitrate %d\n",
                             m_aac_param.nChannels,m_aac_param.nSampleRate,
-			    m_aac_param.nBitRate,m_aac_param.eAACStreamFormat);
+			    m_aac_param.nBitRate,m_aac_param.eAACStreamFormat,
+                            drv_aac_enc_config.bit_rate);
                 switch(m_aac_param.eAACStreamFormat)
                 {
 
@@ -4095,6 +4098,11 @@ OMX_ERRORTYPE  omx_aac_aenc::empty_this_buffer_proxy
         DEBUG_PRINT("meta_in.nFlags = %d\n",meta_in.nFlags);
     }
 
+    if (ts == 0) {
+        DEBUG_PRINT("Anchor time %lld", buffer->nTimeStamp);
+        ts = buffer->nTimeStamp;
+    }
+
     memcpy(&data[sizeof(META_IN)],buffer->pBuffer,buffer->nFilledLen);
     write(m_drv_fd, data, buffer->nFilledLen+sizeof(META_IN));
     pthread_mutex_lock(&m_state_lock);
@@ -4205,11 +4213,8 @@ OMX_ERRORTYPE  omx_aac_aenc::fill_this_buffer_proxy
         }
 
          meta_out = (ENC_META_OUT *)(buffer->pBuffer + sizeof(unsigned char));
-         buffer->nTimeStamp = (((OMX_TICKS)meta_out->msw_ts << 32)+
-				meta_out->lsw_ts);
-
-         ts += frameduration;
-         buffer->nTimeStamp = ts;
+         buffer->nTimeStamp = ts + (frameduration * m_frame_count);
+         ++m_frame_count;
          nTimestamp = buffer->nTimeStamp;
          buffer->nFlags |= meta_out->nflags;
          buffer->nOffset =  meta_out->offset_to_frame + 1;
@@ -5014,3 +5019,44 @@ void  omx_aac_aenc::audaac_rec_install_mp4ff_header_variable (OMX_U16  byte_num,
 
 }
 
+int omx_aac_aenc::get_updated_bit_rate(int bitrate)
+{
+	int updated_rate, min_bitrate, max_bitrate;
+
+        max_bitrate = m_aac_param.nSampleRate *
+        MAX_BITRATE_MULFACTOR;
+	switch(m_aac_param.eAACProfile)
+	{
+		case OMX_AUDIO_AACObjectLC:
+		    min_bitrate = m_aac_param.nSampleRate;
+		    if (m_aac_param.nChannels == 1) {
+		       min_bitrate = min_bitrate/BITRATE_DIVFACTOR;
+                       max_bitrate = max_bitrate/BITRATE_DIVFACTOR;
+                    }
+                break;
+		case OMX_AUDIO_AACObjectHE:
+		    min_bitrate = MIN_BITRATE;
+		    if (m_aac_param.nChannels == 1)
+                       max_bitrate = max_bitrate/BITRATE_DIVFACTOR;
+		break;
+		case OMX_AUDIO_AACObjectHE_PS:
+		    min_bitrate = MIN_BITRATE;
+		break;
+                default:
+                    return bitrate;
+                break;
+	}
+        /* Update MIN and MAX values*/
+        if (min_bitrate > MIN_BITRATE)
+              min_bitrate = MIN_BITRATE;
+        if (max_bitrate > MAX_BITRATE)
+              max_bitrate = MAX_BITRATE;
+        /* Update the bitrate in the range  */
+        if (bitrate < min_bitrate)
+            updated_rate = min_bitrate;
+        else if(bitrate > max_bitrate)
+            updated_rate = max_bitrate;
+        else
+             updated_rate = bitrate;
+	return updated_rate;
+}

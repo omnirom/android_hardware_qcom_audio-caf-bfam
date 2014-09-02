@@ -32,13 +32,15 @@
 #define OFFLOAD_EFFECTS_BUNDLE_LIBRARY_PATH "/system/lib/soundfx/libqcompostprocbundle.so"
 
 /* Flags used to initialize acdb_settings variable that goes to ACDB library */
-#define DMIC_FLAG       0x00000002
-#define QMIC_FLAG       0x00000004
-#define TTY_MODE_OFF    0x00000010
-#define TTY_MODE_FULL   0x00000020
-#define TTY_MODE_VCO    0x00000040
-#define TTY_MODE_HCO    0x00000080
-#define TTY_MODE_CLEAR  0xFFFFFF0F
+#define NONE_FLAG            0x00000000
+#define DMIC_FLAG            0x00000002
+#define QMIC_FLAG            0x00000004
+#define TTY_MODE_OFF         0x00000010
+#define TTY_MODE_FULL        0x00000020
+#define TTY_MODE_VCO         0x00000040
+#define TTY_MODE_HCO         0x00000080
+#define TTY_MODE_CLEAR       0xFFFFFF0F
+#define FLUENCE_MODE_CLEAR   0xFFFFFFF0
 
 #define ACDB_DEV_TYPE_OUT 1
 #define ACDB_DEV_TYPE_IN 2
@@ -80,6 +82,7 @@ typedef enum {
     USECASE_VOICE2_CALL,
     USECASE_VOLTE_CALL,
     USECASE_QCHAT_CALL,
+    USECASE_VOWLAN_CALL,
     USECASE_COMPRESS_VOIP_CALL,
 
     USECASE_INCALL_REC_UPLINK,
@@ -223,6 +226,7 @@ struct audio_device {
     bool speaker_lr_swap;
     struct voice voice;
     unsigned int cur_hdmi_channels;
+    unsigned int cur_wfd_channels;
 
     int snd_card;
     void *platform;
@@ -238,17 +242,15 @@ struct audio_device {
 int select_devices(struct audio_device *adev,
                           audio_usecase_t uc_id);
 int disable_audio_route(struct audio_device *adev,
-                               struct audio_usecase *usecase,
-                               bool update_mixer);
+                        struct audio_usecase *usecase);
 int disable_snd_device(struct audio_device *adev,
-                              snd_device_t snd_device,
-                              bool update_mixer);
+                       snd_device_t snd_device);
 int enable_snd_device(struct audio_device *adev,
-                             snd_device_t snd_device,
-                             bool update_mixer);
+                      snd_device_t snd_device);
+
 int enable_audio_route(struct audio_device *adev,
-                              struct audio_usecase *usecase,
-                              bool update_mixer);
+                       struct audio_usecase *usecase);
+
 struct audio_usecase *get_usecase_from_list(struct audio_device *adev,
                                                    audio_usecase_t uc_id);
 

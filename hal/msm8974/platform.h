@@ -148,7 +148,7 @@ enum {
  * the buffer size of an input/output stream
  */
 #define DEEP_BUFFER_OUTPUT_PERIOD_SIZE 960
-#define DEEP_BUFFER_OUTPUT_PERIOD_COUNT 8
+#define DEEP_BUFFER_OUTPUT_PERIOD_COUNT 4
 #define LOW_LATENCY_OUTPUT_PERIOD_SIZE 240
 #define LOW_LATENCY_OUTPUT_PERIOD_COUNT 2
 
@@ -169,19 +169,25 @@ enum {
 #define FM_PLAYBACK_PCM_DEVICE 5
 #define FM_CAPTURE_PCM_DEVICE  6
 #define HFP_PCM_RX 5
-#define HFP_SCO_RX 23
-#define HFP_ASM_RX_TX 24
 
 #define INCALL_MUSIC_UPLINK_PCM_DEVICE 1
+
+#ifdef PLATFORM_MSM8610
+#define INCALL_MUSIC_UPLINK2_PCM_DEVICE 15
+#elif PLATFORM_MSM8x26
 #define INCALL_MUSIC_UPLINK2_PCM_DEVICE 16
+#else
+#define INCALL_MUSIC_UPLINK2_PCM_DEVICE 35
+#endif
+
 #define SPKR_PROT_CALIB_RX_PCM_DEVICE 5
-#define SPKR_PROT_CALIB_TX_PCM_DEVICE 22
+#define SPKR_PROT_CALIB_TX_PCM_DEVICE 25
 #define PLAYBACK_OFFLOAD_DEVICE 9
 #define COMPRESS_VOIP_CALL_PCM_DEVICE 3
 
 #ifdef PLATFORM_MSM8610
 #define LOWLATENCY_PCM_DEVICE 12
-#define EC_REF_RX "I2S_RX"
+#define EC_REF_RX "SEC_I2S_RX"
 #else
 #define LOWLATENCY_PCM_DEVICE 15
 #define EC_REF_RX "SLIM_RX"
@@ -197,21 +203,33 @@ enum {
 #define VOICE2_CALL_PCM_DEVICE 14
 #define VOLTE_CALL_PCM_DEVICE 17
 #define QCHAT_CALL_PCM_DEVICE 18
+#define VOWLAN_CALL_PCM_DEVICE 30
 #elif PLATFORM_APQ8084
 #define VOICE_CALL_PCM_DEVICE 20
 #define VOICE2_CALL_PCM_DEVICE 13
 #define VOLTE_CALL_PCM_DEVICE 21
 #define QCHAT_CALL_PCM_DEVICE 06
+#define VOWLAN_CALL_PCM_DEVICE -1
 #elif PLATFORM_MSM8610
 #define VOICE_CALL_PCM_DEVICE 2
 #define VOICE2_CALL_PCM_DEVICE 13
 #define VOLTE_CALL_PCM_DEVICE 15
 #define QCHAT_CALL_PCM_DEVICE 14
+#define VOWLAN_CALL_PCM_DEVICE -1
 #else
 #define VOICE_CALL_PCM_DEVICE 2
 #define VOICE2_CALL_PCM_DEVICE 22
 #define VOLTE_CALL_PCM_DEVICE 14
 #define QCHAT_CALL_PCM_DEVICE 20
+#define VOWLAN_CALL_PCM_DEVICE 36
+#endif
+
+#ifdef PLATFORM_MSM8x26
+#define HFP_SCO_RX 28
+#define HFP_ASM_RX_TX 29
+#else
+#define HFP_SCO_RX 23
+#define HFP_ASM_RX_TX 24
 #endif
 
 #define LIB_CSD_CLIENT "libcsd-client.so"
@@ -255,30 +273,8 @@ typedef void (*acdb_send_audio_cal_t)(int, int);
 typedef void (*acdb_send_voice_cal_t)(int, int);
 typedef int (*acdb_reload_vocvoltable_t)(int);
 
-struct platform_data {
-    struct audio_device *adev;
-    bool fluence_in_spkr_mode;
-    bool fluence_in_voice_call;
-    bool fluence_in_voice_rec;
-    bool fluence_in_audio_rec;
-    int  fluence_type;
-    int  btsco_sample_rate;
-    bool slowtalk;
-    /* Audio calibration related functions */
-    void                       *acdb_handle;
-    int                        voice_feature_set;
-    acdb_init_t                acdb_init;
-    acdb_deallocate_t          acdb_deallocate;
-    acdb_send_audio_cal_t      acdb_send_audio_cal;
-    acdb_send_voice_cal_t      acdb_send_voice_cal;
-    acdb_reload_vocvoltable_t  acdb_reload_vocvoltable;
-
-    void *hw_info;
-    struct csd_data *csd;
-};/* Audio calibration related functions */
 #define SAMPLE_RATE_8KHZ  8000
 #define SAMPLE_RATE_16KHZ 16000
-int set_echo_reference(struct mixer *mixer, const char* ec_ref);
 
 
 #endif // QCOM_AUDIO_PLATFORM_H

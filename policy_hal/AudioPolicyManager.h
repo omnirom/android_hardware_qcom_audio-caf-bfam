@@ -48,6 +48,8 @@ public:
                                             uint32_t format,
                                             uint32_t channels,
                                             AudioSystem::audio_in_acoustics acoustics);
+        virtual bool isOffloadSupported(const audio_offload_info_t& offloadInfo);
+        virtual void setPhoneState(int state);
 protected:
         // return the strategy corresponding to a given stream type
         static routing_strategy getStrategy(AudioSystem::stream_type stream);
@@ -77,6 +79,9 @@ protected:
 
         // returns the category the device belongs to with regard to volume curve management
         static device_category getDeviceCategory(audio_devices_t device);
+
+        // returns true if give output is direct output
+        bool isDirectOutput(audio_io_handle_t output);
 
 };
 };
