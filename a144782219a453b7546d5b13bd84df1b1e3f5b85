@@ -128,6 +128,23 @@
       "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
       "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b49054d_9b645748",
+        "filename": "policy_hal/AudioPolicyManager.cpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 1161,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-09-03T23:52:49Z",
+      "side": 1,
+      "message": "BTW: if you want easy logging if offloading works enable this line",
+      "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
     }
   ]
 }
