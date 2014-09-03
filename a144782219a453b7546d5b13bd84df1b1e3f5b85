@@ -70,6 +70,24 @@
       "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
       "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b49054d_3bc9ab55",
+        "filename": "hal/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-09-03T22:42:16Z",
+      "side": 1,
+      "message": "yeah there is somthing strange but just disable dolby for now",
+      "parentUuid": "0b49054d_bbdcbb1b",
+      "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
     }
   ]
 }
