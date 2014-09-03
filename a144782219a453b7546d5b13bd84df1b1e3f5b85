@@ -16,6 +16,24 @@
       "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
       "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0b49054d_5bc10f34",
+        "filename": "hal/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 115,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-09-03T22:35:32Z",
+      "side": 1,
+      "message": "we have AUDIO_FEATURE_DISABLED_DS1_DOLBY_DDP :\u003d true for oppos\ndont know if any devices supports dolby at all?",
+      "parentUuid": "0b49054d_dbac1f86",
+      "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
     }
   ]
 }
