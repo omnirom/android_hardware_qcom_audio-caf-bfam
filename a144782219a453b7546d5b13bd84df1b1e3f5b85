@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "0b49054d_9b2d37fc",
+        "filename": "hal/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 1000515
+      },
+      "writtenOn": "2014-09-03T23:05:08Z",
+      "side": 1,
+      "message": "I think is better/safe to move all things included in this filter to 118 line. Accordingly CAF, DDP depends on DAP.",
+      "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0b49054d_3bf28b99",
         "filename": "hal/Android.mk",
         "patchSetId": 1
