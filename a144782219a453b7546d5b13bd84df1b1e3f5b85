@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "0b49054d_3bf28b99",
+        "filename": "hal/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2014-09-03T23:00:37Z",
+      "side": 1,
+      "message": "but if you like delete that line",
+      "range": {
+        "startLine": 112,
+        "startChar": 4,
+        "endLine": 112,
+        "endChar": 19
+      },
+      "revId": "a144782219a453b7546d5b13bd84df1b1e3f5b85",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0b49054d_dbac1f86",
         "filename": "hal/Android.mk",
         "patchSetId": 1
