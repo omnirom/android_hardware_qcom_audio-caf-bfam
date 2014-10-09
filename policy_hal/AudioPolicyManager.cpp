@@ -395,7 +395,7 @@ void AudioPolicyManager::setPhoneState(int state)
 
 void AudioPolicyManager::setForceUse(AudioSystem::force_use usage, AudioSystem::forced_config config)
 {
-    ALOGD("setForceUse() usage %d, config %d, mPhoneState %d", usage, config, mPhoneState);
+    ALOGV("setForceUse() usage %d, config %d, mPhoneState %d", usage, config, mPhoneState);
 
     bool forceVolumeReeval = false;
     switch(usage) {
@@ -1072,7 +1072,7 @@ bool AudioPolicyManager::isOffloadSupported(const audio_offload_info_t& offloadI
         if(property_get("audio.offload.pcm.enable", propValue, NULL)) {
             bool prop_enabled = atoi(propValue) || !strncmp("true", propValue, 4);
             if (prop_enabled) {
-                ALOGW("PCM offload property is enabled");
+                ALOGV("PCM offload property is enabled");
                 pcmOffload = true;
             }
         }
@@ -1103,7 +1103,7 @@ bool AudioPolicyManager::isOffloadSupported(const audio_offload_info_t& offloadI
             if(property_get("av.offload.enable", propValue, NULL)) {
                 bool prop_enabled = atoi(propValue) || !strncmp("true", propValue, 4);
                 if (!prop_enabled) {
-                    ALOGW("offload disabled by av.offload.enable = %s ", propValue );
+                    ALOGV("offload disabled by av.offload.enable = %s ", propValue );
                     return false;
                 }
             } else {
@@ -1114,7 +1114,7 @@ bool AudioPolicyManager::isOffloadSupported(const audio_offload_info_t& offloadI
                 if (property_get("av.streaming.offload.enable", propValue, NULL)) {
                     bool prop_enabled = atoi(propValue) || !strncmp("true", propValue, 4);
                     if (!prop_enabled) {
-                       ALOGW("offload disabled by av.streaming.offload.enable = %s ", propValue );
+                       ALOGV("offload disabled by av.streaming.offload.enable = %s ", propValue );
                        return false;
                     }
                 } else {
@@ -1159,6 +1159,7 @@ bool AudioPolicyManager::isOffloadSupported(const audio_offload_info_t& offloadI
                                             offloadInfo.channel_mask,
                                             AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD);
     ALOGV("isOffloadSupported() profile %sfound", profile != NULL ? "" : "NOT ");
+    ALOGD("isOffloadSupported() %s", profile != NULL ? "true" : "false");
     return (profile != NULL);
 }
 
