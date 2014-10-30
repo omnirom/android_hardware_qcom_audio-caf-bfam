@@ -393,7 +393,7 @@ void audio_extn_set_parameters(struct audio_device *adev,
    audio_extn_ddp_set_parameters(adev, parms);
 }
 
-void audio_extn_get_parameters(const struct audio_device *adev,
+void audio_extn_get_parameters(struct audio_device *adev,
                               struct str_parms *query,
                               struct str_parms *reply)
 {

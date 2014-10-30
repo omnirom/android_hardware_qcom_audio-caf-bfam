@@ -105,16 +105,15 @@ ifneq ($(strip $(AUDIO_FEATURE_DISABLED_COMPRESS_CAPTURE)),true)
     LOCAL_SRC_FILES += audio_extn/compress_capture.c
 endif
 
-ifneq ($(strip $(AUDIO_FEATURE_DISABLED_DS1_DOLBY_DAP)),true)
-    LOCAL_CFLAGS += -DDS1_DOLBY_DAP_ENABLED
 ifneq ($(strip $(AUDIO_FEATURE_DISABLED_DS1_DOLBY_DDP)),true)
     LOCAL_CFLAGS += -DDS1_DOLBY_DDP_ENABLED
+ifneq ($(strip $(AUDIO_FEATURE_DISABLED_DS1_DOLBY_DAP)),true)
+    LOCAL_CFLAGS += -DDS1_DOLBY_DAP_ENABLED
+endif
     LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-    LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/us
+    LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
     LOCAL_SRC_FILES += audio_extn/dolby.c
 endif
-endif
-
 
 LOCAL_SHARED_LIBRARIES := \
 	liblog \
@@ -134,13 +133,13 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/voice_extn \
 	$(LOCAL_PATH)/vendor-platform
 
-ifeq ($(BUILD_QCOM_PROP_EXTNS),true)
 ifneq ($(filter msm8974,$(AUDIO_PLATFORM)),)
     LOCAL_C_INCLUDES += external/expat/lib
     LOCAL_SHARED_LIBRARIES += libexpat
     LOCAL_SRC_FILES += $(AUDIO_PLATFORM)/platform_parser.c
 endif
 
+ifeq ($(BUILD_QCOM_PROP_EXTNS),true)
 ifeq ($(strip $(AUDIO_FEATURE_ENABLED_LISTEN)),true)
     LOCAL_CFLAGS += -DAUDIO_LISTEN_ENABLED
     LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/audio-listen

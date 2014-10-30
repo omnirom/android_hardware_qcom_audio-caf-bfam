@@ -25,7 +25,7 @@
 void audio_extn_set_parameters(struct audio_device *adev,
                                struct str_parms *parms);
 
-void audio_extn_get_parameters(const struct audio_device *adev,
+void audio_extn_get_parameters(struct audio_device *adev,
                                struct str_parms *query,
                                struct str_parms *reply);
 
