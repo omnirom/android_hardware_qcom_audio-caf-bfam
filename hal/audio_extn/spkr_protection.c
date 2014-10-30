@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -143,7 +143,7 @@ static void spkr_prot_set_spkrstatus(bool enable)
    }
 }
 
-static void spkr_prot_calib_cancel(void *adev)
+void audio_extn_spkr_prot_calib_cancel(void *adev)
 {
     pthread_t threadid;
     struct audio_usecase *uc_info;
@@ -164,7 +164,6 @@ static void spkr_prot_calib_cancel(void *adev)
             pthread_cond_wait(&handle.spkr_calibcancel_ack,
             &handle.spkr_calib_cancelack_mutex);
             pthread_mutex_unlock(&handle.spkr_calib_cancelack_mutex);
-            pthread_mutex_unlock(&handle.mutex_spkr_prot);
     }
     ALOGV("%s: Exit", __func__);
 }
@@ -197,6 +196,7 @@ static int spkr_calibrate(int t0)
     struct audio_usecase *uc_info_rx = NULL, *uc_info_tx = NULL;
     int32_t pcm_dev_rx_id = -1, pcm_dev_tx_id = -1;
     struct timespec ts;
+    bool acquire_device = false;
 
     if (!adev) {
         ALOGE("%s: Invalid params", __func__);
@@ -225,11 +225,10 @@ static int spkr_calibrate(int t0)
     uc_info_rx->type = PCM_PLAYBACK;
     uc_info_rx->in_snd_device = SND_DEVICE_NONE;
     uc_info_rx->out_snd_device = SND_DEVICE_OUT_SPEAKER_PROTECTED;
-    pthread_mutex_lock(&adev->lock);
     disable_rx = true;
-    enable_snd_device(adev, SND_DEVICE_OUT_SPEAKER_PROTECTED, true);
-    enable_audio_route(adev, uc_info_rx, true);
-    pthread_mutex_unlock(&adev->lock);
+    list_add_tail(&adev->usecase_list, &uc_info_rx->list);
+    enable_snd_device(adev, SND_DEVICE_OUT_SPEAKER_PROTECTED);
+    enable_audio_route(adev, uc_info_rx);
 
     pcm_dev_rx_id = platform_get_pcm_device_id(uc_info_rx->id, PCM_PLAYBACK);
     ALOGV("%s: pcm device id %d", __func__, pcm_dev_rx_id);
@@ -255,11 +254,10 @@ static int spkr_calibrate(int t0)
     uc_info_tx->in_snd_device = SND_DEVICE_NONE;
     uc_info_tx->out_snd_device = SND_DEVICE_NONE;
 
-    pthread_mutex_lock(&adev->lock);
     disable_tx = true;
-    enable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK, true);
-    enable_audio_route(adev, uc_info_tx, true);
-    pthread_mutex_unlock(&adev->lock);
+    list_add_tail(&adev->usecase_list, &uc_info_tx->list);
+    enable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK);
+    enable_audio_route(adev, uc_info_tx);
 
     pcm_dev_tx_id = platform_get_pcm_device_id(uc_info_tx->id, PCM_CAPTURE);
     if (pcm_dev_tx_id < 0) {
@@ -290,6 +288,9 @@ static int spkr_calibrate(int t0)
     clock_gettime(CLOCK_REALTIME, &ts);
     ts.tv_sec += (SLEEP_AFTER_CALIB_START/1000);
     ts.tv_nsec = 0;
+    pthread_mutex_lock(&handle.mutex_spkr_prot);
+    pthread_mutex_unlock(&adev->lock);
+    acquire_device = true;
     (void)pthread_cond_timedwait(&handle.spkr_calib_cancel,
         &handle.mutex_spkr_prot, &ts);
     ALOGD("%s: Speaker calibration done", __func__);
@@ -334,17 +335,9 @@ exit:
         if (handle.pcm_tx)
             pcm_close(handle.pcm_tx);
         handle.pcm_tx = NULL;
-        pthread_mutex_lock(&adev->lock);
-        if (disable_rx) {
-            disable_snd_device(adev, SND_DEVICE_OUT_SPEAKER_PROTECTED, true);
-            disable_audio_route(adev, uc_info_rx, true);
-        }
-        if (disable_tx) {
-            disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK, true);
-            disable_audio_route(adev, uc_info_tx, true);
-        }
-        pthread_mutex_unlock(&adev->lock);
-
+        /* Clear TX calibration to handset mic */
+        platform_send_audio_calibration(adev->platform,
+        SND_DEVICE_IN_HANDSET_MIC);
         if (!status.status) {
             protCfg.mode = MSM_SPKR_PROT_CALIBRATED;
             protCfg.r0 = status.r0;
@@ -360,6 +353,23 @@ exit:
         }
         if (acdb_fd > 0)
             close(acdb_fd);
+
+        if (!handle.cancel_spkr_calib && cleanup) {
+            pthread_mutex_unlock(&handle.spkr_calib_cancelack_mutex);
+            pthread_cond_wait(&handle.spkr_calib_cancel,
+            &handle.mutex_spkr_prot);
+            pthread_mutex_lock(&handle.spkr_calib_cancelack_mutex);
+        }
+        if (disable_rx) {
+            list_remove(&uc_info_rx->list);
+            disable_snd_device(adev, SND_DEVICE_OUT_SPEAKER_PROTECTED);
+            disable_audio_route(adev, uc_info_rx);
+        }
+        if (disable_tx) {
+            list_remove(&uc_info_tx->list);
+            disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK);
+            disable_audio_route(adev, uc_info_tx);
+        }
         if (uc_info_rx) free(uc_info_rx);
         if (uc_info_tx) free(uc_info_tx);
         if (cleanup) {
@@ -367,8 +377,11 @@ exit:
                 pthread_cond_signal(&handle.spkr_calibcancel_ack);
             handle.cancel_spkr_calib = 0;
             pthread_mutex_unlock(&handle.spkr_calib_cancelack_mutex);
+            pthread_mutex_unlock(&handle.mutex_spkr_prot);
         }
     }
+    if (acquire_device)
+        pthread_mutex_lock(&adev->lock);
     return status.status;
 }
 
@@ -454,35 +467,37 @@ static void* spkr_calibration_thread(void *context)
             t0 = SAFE_SPKR_TEMP_Q6;
         }
         goahead = false;
-        pthread_mutex_lock(&handle.mutex_spkr_prot);
+        pthread_mutex_lock(&adev->lock);
         if (is_speaker_in_use(&sec)) {
             ALOGD("%s: Speaker in use retry calibration", __func__);
-            pthread_mutex_unlock(&handle.mutex_spkr_prot);
+            pthread_mutex_unlock(&adev->lock);
             continue;
         } else {
             ALOGD("%s: speaker idle %ld", __func__, sec);
             if (sec < MIN_SPKR_IDLE_SEC) {
                 ALOGD("%s: speaker idle is less retry", __func__);
-                pthread_mutex_unlock(&handle.mutex_spkr_prot);
+                pthread_mutex_unlock(&adev->lock);
                 continue;
             }
             goahead = true;
         }
-        if (!list_empty(&adev->usecase_list))
+        if (!list_empty(&adev->usecase_list)) {
+            ALOGD("%s: Usecase active re-try calibration", __func__);
             goahead = false;
+            pthread_mutex_unlock(&adev->lock);
+        }
         if (goahead) {
                 int status;
                 status = spkr_calibrate(t0);
+                pthread_mutex_unlock(&adev->lock);
                 if (status == -EAGAIN) {
                     ALOGE("%s: failed to calibrate try again %s",
                     __func__, strerror(status));
-                    pthread_mutex_unlock(&handle.mutex_spkr_prot);
                     continue;
                 } else {
                     ALOGE("%s: calibrate status %s", __func__, strerror(status));
                 }
                 ALOGD("%s: spkr_prot_thread end calibration", __func__);
-                pthread_mutex_unlock(&handle.mutex_spkr_prot);
                 break;
         }
     }
@@ -579,7 +594,7 @@ void audio_extn_spkr_prot_init(void *adev)
 
 int audio_extn_spkr_prot_start_processing(snd_device_t snd_device)
 {
-    struct audio_usecase uc_info_tx;
+    struct audio_usecase *uc_info_tx;
     struct audio_device *adev = handle.adev_handle;
     int32_t pcm_dev_tx_id = -1, ret = 0;
 
@@ -589,34 +604,33 @@ int audio_extn_spkr_prot_start_processing(snd_device_t snd_device)
        ALOGE("%s: Invalid params", __func__);
        return -EINVAL;
     }
-    spkr_prot_calib_cancel(adev);
     spkr_prot_set_spkrstatus(true);
     if (platform_send_audio_calibration(adev->platform,
         SND_DEVICE_OUT_SPEAKER_PROTECTED) < 0) {
         adev->snd_dev_ref_cnt[snd_device]--;
         return -EINVAL;
     }
+    uc_info_tx = (struct audio_usecase *)calloc(1, sizeof(struct audio_usecase));
     ALOGV("%s: snd_device(%d: %s)", __func__, snd_device,
          platform_get_snd_device_name(SND_DEVICE_OUT_SPEAKER_PROTECTED));
-    audio_route_apply_path(adev->audio_route,
+    audio_route_apply_and_update_path(adev->audio_route,
         platform_get_snd_device_name(SND_DEVICE_OUT_SPEAKER_PROTECTED));
 
     pthread_mutex_lock(&handle.mutex_spkr_prot);
     if (handle.spkr_processing_state == SPKR_PROCESSING_IN_IDLE) {
-        memset(&uc_info_tx, 0 , sizeof(uc_info_tx));
-        uc_info_tx.id = USECASE_AUDIO_SPKR_CALIB_TX;
-        uc_info_tx.type = PCM_CAPTURE;
-        uc_info_tx.in_snd_device = SND_DEVICE_NONE;
-        uc_info_tx.out_snd_device = SND_DEVICE_NONE;
+        uc_info_tx->id = USECASE_AUDIO_SPKR_CALIB_TX;
+        uc_info_tx->type = PCM_CAPTURE;
+        uc_info_tx->in_snd_device = SND_DEVICE_NONE;
+        uc_info_tx->out_snd_device = SND_DEVICE_NONE;
         handle.pcm_tx = NULL;
+        list_add_tail(&adev->usecase_list, &uc_info_tx->list);
+        enable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK);
+        enable_audio_route(adev, uc_info_tx);
 
-        enable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK, true);
-        enable_audio_route(adev, &uc_info_tx, true);
-
-        pcm_dev_tx_id = platform_get_pcm_device_id(uc_info_tx.id, PCM_CAPTURE);
+        pcm_dev_tx_id = platform_get_pcm_device_id(uc_info_tx->id, PCM_CAPTURE);
         if (pcm_dev_tx_id < 0) {
             ALOGE("%s: Invalid pcm device for usecase (%d)",
-                  __func__, uc_info_tx.id);
+                  __func__, uc_info_tx->id);
             ret = -ENODEV;
             goto exit;
         }
@@ -633,13 +647,19 @@ int audio_extn_spkr_prot_start_processing(snd_device_t snd_device)
             ret = -EINVAL;
         }
     }
+
 exit:
+   /* Clear VI feedback cal and replace with handset MIC  */
+   platform_send_audio_calibration(adev->platform,
+        SND_DEVICE_IN_HANDSET_MIC);
     if (ret) {
         if (handle.pcm_tx)
             pcm_close(handle.pcm_tx);
         handle.pcm_tx = NULL;
-        disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK, true);
-        disable_audio_route(adev, &uc_info_tx, true);
+        list_remove(&uc_info_tx->list);
+        disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK);
+        disable_audio_route(adev, uc_info_tx);
+        free(uc_info_tx);
     } else
         handle.spkr_processing_state = SPKR_PROCESSING_IN_PROGRESS;
     pthread_mutex_unlock(&handle.mutex_spkr_prot);
@@ -649,26 +669,26 @@ exit:
 
 void audio_extn_spkr_prot_stop_processing()
 {
-    struct audio_usecase uc_info_tx;
+    struct audio_usecase *uc_info_tx;
     struct audio_device *adev = handle.adev_handle;
     ALOGV("%s: Entry", __func__);
     spkr_prot_set_spkrstatus(false);
     pthread_mutex_lock(&handle.mutex_spkr_prot);
     if (adev && handle.spkr_processing_state == SPKR_PROCESSING_IN_PROGRESS) {
-        memset(&uc_info_tx, 0 , sizeof(uc_info_tx));
-        uc_info_tx.id = USECASE_AUDIO_SPKR_CALIB_TX;
-        uc_info_tx.type = PCM_CAPTURE;
-        uc_info_tx.in_snd_device = SND_DEVICE_NONE;
-        uc_info_tx.out_snd_device = SND_DEVICE_NONE;
+        uc_info_tx = get_usecase_from_list(adev, USECASE_AUDIO_SPKR_CALIB_TX);
         if (handle.pcm_tx)
             pcm_close(handle.pcm_tx);
         handle.pcm_tx = NULL;
-        disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK, true);
-        disable_audio_route(adev, &uc_info_tx, true);
+        disable_snd_device(adev, SND_DEVICE_IN_CAPTURE_VI_FEEDBACK);
+        if (uc_info_tx) {
+            list_remove(&uc_info_tx->list);
+            disable_audio_route(adev, uc_info_tx);
+            free(uc_info_tx);
+        }
     }
     handle.spkr_processing_state = SPKR_PROCESSING_IN_IDLE;
     pthread_mutex_unlock(&handle.mutex_spkr_prot);
-    audio_route_reset_path(adev->audio_route,
+    audio_route_reset_and_update_path(adev->audio_route,
       platform_get_snd_device_name(SND_DEVICE_OUT_SPEAKER_PROTECTED));
     ALOGV("%s: Exit", __func__);
 }

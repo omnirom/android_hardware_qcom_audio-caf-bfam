@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  * Not a Contribution.
  *
  * Copyright (C) 2013 The Android Open Source Project
@@ -39,12 +39,26 @@ bool audio_extn_should_use_fb_anc(void);
 bool audio_extn_should_use_handset_anc(int in_channels);
 #endif
 
-#ifndef AFE_PROXY_ENABLED
-#define audio_extn_set_afe_proxy_channel_mixer(adev)     (0)
-#define audio_extn_read_afe_proxy_channel_masks(out)     (0)
+#ifndef FLUENCE_ENABLED
+#define audio_extn_set_fluence_parameters(adev, parms) (0)
+#define audio_extn_get_fluence_parameters(adev, query, reply) (0)
 #else
-int32_t audio_extn_set_afe_proxy_channel_mixer(struct audio_device *adev);
+void audio_extn_set_fluence_parameters(struct audio_device *adev,
+                                           struct str_parms *parms);
+int audio_extn_get_fluence_parameters(struct audio_device *adev,
+                  struct str_parms *query, struct str_parms *reply);
+#endif
+
+#ifndef AFE_PROXY_ENABLED
+#define audio_extn_set_afe_proxy_channel_mixer(adev,channel_count)     (0)
+#define audio_extn_read_afe_proxy_channel_masks(out)                   (0)
+#define audio_extn_get_afe_proxy_channel_count()                       (0)
+#else
+int32_t audio_extn_set_afe_proxy_channel_mixer(struct audio_device *adev,
+                                                    int channel_count);
 int32_t audio_extn_read_afe_proxy_channel_masks(struct stream_out *out);
+int32_t audio_extn_get_afe_proxy_channel_count();
+
 #endif
 
 #ifndef USB_HEADSET_ENABLED
@@ -57,6 +71,7 @@ int32_t audio_extn_read_afe_proxy_channel_masks(struct stream_out *out);
 #define audio_extn_usb_set_proxy_sound_card(sndcard_idx) (0)
 #define audio_extn_usb_is_proxy_inuse()                  (0)
 #else
+void initPlaybackVolume();
 void audio_extn_usb_init(void *adev);
 void audio_extn_usb_deinit();
 void audio_extn_usb_start_playback(void *adev);
@@ -126,6 +141,7 @@ int32_t audio_extn_read_xml(struct audio_device *adev, uint32_t mixer_card,
 #ifndef SPKR_PROT_ENABLED
 #define audio_extn_spkr_prot_init(adev)       (0)
 #define audio_extn_spkr_prot_start_processing(snd_device)    (-EINVAL)
+#define audio_extn_spkr_prot_calib_cancel(adev) (0)
 #define audio_extn_spkr_prot_stop_processing()     (0)
 #define audio_extn_spkr_prot_is_enabled() (false)
 #else
@@ -133,6 +149,7 @@ void audio_extn_spkr_prot_init(void *adev);
 int audio_extn_spkr_prot_start_processing(snd_device_t snd_device);
 void audio_extn_spkr_prot_stop_processing();
 bool audio_extn_spkr_prot_is_enabled();
+void audio_extn_spkr_prot_calib_cancel(void *adev);
 #endif
 
 #ifndef COMPRESS_CAPTURE_ENABLED
@@ -155,14 +172,39 @@ size_t audio_extn_compr_cap_read(struct stream_in *in,
 void audio_extn_compr_cap_deinit();
 #endif
 
-#ifndef DS1_DOLBY_DDP_ENABLED
-#define audio_extn_dolby_is_supported_format(format)    (0)
-#define audio_extn_dolby_get_snd_codec_id(format)       (0)
-#define audio_extn_dolby_set_DMID(adev)                 (0)
+#if defined(DS1_DOLBY_DDP_ENABLED) || defined(DS1_DOLBY_DAP_ENABLED)
+void audio_extn_dolby_set_dmid(struct audio_device *adev);
 #else
-bool audio_extn_dolby_is_supported_format(audio_format_t format);
-int audio_extn_dolby_get_snd_codec_id(audio_format_t format);
-int audio_extn_dolby_set_DMID(struct audio_device *adev);
+#define audio_extn_dolby_set_dmid(adev)                 (0)
+#endif
+
+#ifndef DS1_DOLBY_DDP_ENABLED
+#define audio_extn_dolby_set_endpoint(adev)                 (0)
+#else
+void audio_extn_dolby_set_endpoint(struct audio_device *adev);
+#endif
+
+#ifndef DS1_DOLBY_DDP_ENABLED
+#define audio_extn_ddp_set_parameters(adev, parms)      (0)
+#define audio_extn_is_dolby_format(format)              (0)
+#define audio_extn_dolby_get_snd_codec_id(adev, out, format)       (0)
+#define audio_extn_dolby_send_ddp_endp_params(adev)     (0)
+#else
+bool audio_extn_is_dolby_format(audio_format_t format);
+int audio_extn_dolby_get_snd_codec_id(struct audio_device *adev,
+                                      struct stream_out *out,
+                                      audio_format_t format);
+void audio_extn_ddp_set_parameters(struct audio_device *adev,
+                                   struct str_parms *parms);
+void audio_extn_dolby_send_ddp_endp_params(struct audio_device *adev);
+#endif
+
+#ifndef HFP_ENABLED
+#define audio_extn_hfp_is_active(adev)                  (0)
+#define audio_extn_hfp_get_usecase()                    (0)
+#else
+bool audio_extn_hfp_is_active(struct audio_device *adev);
+audio_usecase_t audio_extn_hfp_get_usecase();
 #endif
 
 #ifndef HFP_ENABLED

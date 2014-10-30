@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -358,7 +358,10 @@ private:
         OMX_COMPONENT_OUTPUT_DISABLE_PENDING  =0x7
     };
 
-
+    #define MIN_BITRATE 24000
+    #define MAX_BITRATE 192000
+    #define MAX_BITRATE_MULFACTOR 12
+    #define BITRATE_DIVFACTOR 2
     typedef Map<OMX_BUFFERHEADERTYPE*, OMX_BUFFERHEADERTYPE*>
     input_buffer_map;
 
@@ -454,6 +457,7 @@ private:
     unsigned int                   m_flags;      //encapsulate the waiting states.
     OMX_U64                        nTimestamp;
     OMX_U64                        ts;
+    uint32_t                       m_frame_count;
     unsigned int                   frameduration;
     unsigned int                   pcm_input; //tunnel or non-tunnel
     unsigned int                   m_inp_act_buf_count;    // Num of Input Buffers
@@ -619,6 +623,7 @@ private:
                 OMX_U8 num_bits_reqd,
                 OMX_U32  value,
                 OMX_U16 *hdr_bit_index);
+    int get_updated_bit_rate(int bitrate);
 
 };
 #endif
