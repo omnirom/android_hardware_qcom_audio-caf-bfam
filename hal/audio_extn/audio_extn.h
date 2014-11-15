@@ -22,6 +22,38 @@
 
 #include <cutils/str_parms.h>
 
+#ifndef PCM_OFFLOAD_ENABLED
+#define AUDIO_FORMAT_PCM_OFFLOAD 0x17000000UL
+#define AUDIO_FORMAT_PCM_16_BIT_OFFLOAD (AUDIO_FORMAT_PCM_OFFLOAD | AUDIO_FORMAT_PCM_SUB_16_BIT)
+#define AUDIO_FORMAT_PCM_24_BIT_OFFLOAD (AUDIO_FORMAT_PCM_OFFLOAD | AUDIO_FORMAT_PCM_SUB_8_24_BIT)
+#define AUDIO_OFFLOAD_CODEC_FORMAT  "music_offload_codec_format"
+#define audio_is_offload_pcm(format) (0)
+#endif
+
+#ifndef AFE_PROXY_ENABLED
+#define AUDIO_DEVICE_OUT_PROXY 0x40000
+#endif
+
+#ifndef COMPRESS_VOIP_ENABLED
+#define AUDIO_OUTPUT_FLAG_VOIP_RX 0x4000
+#endif
+
+#ifndef INCALL_MUSIC_ENABLED
+#define AUDIO_OUTPUT_FLAG_INCALL_MUSIC 0x8000
+#endif
+
+#ifndef FM_ENABLED
+#define AUDIO_DEVICE_OUT_FM 0x80000
+#define AUDIO_DEVICE_OUT_FM_TX 0x100000
+#define AUDIO_SOURCE_FM_RX 9
+#define AUDIO_SOURCE_FM_RX_A2DP 10
+#define AUDIO_DEVICE_IN_FM_RX (AUDIO_DEVICE_BIT_IN | 0x8000)
+#define AUDIO_DEVICE_IN_FM_RX_A2DP (AUDIO_DEVICE_BIT_IN | 0x10000)
+#endif
+
+
+#define MAX_LENGTH_MIXER_CONTROL_IN_INT                  (128)
+
 void audio_extn_set_parameters(struct audio_device *adev,
                                struct str_parms *parms);
 
@@ -45,7 +77,7 @@ bool audio_extn_should_use_handset_anc(int in_channels);
 #else
 void audio_extn_set_fluence_parameters(struct audio_device *adev,
                                            struct str_parms *parms);
-int audio_extn_get_fluence_parameters(struct audio_device *adev,
+int audio_extn_get_fluence_parameters(const struct audio_device *adev,
                   struct str_parms *query, struct str_parms *reply);
 #endif
 
@@ -83,14 +115,13 @@ bool audio_extn_usb_is_proxy_inuse();
 #endif
 
 #ifndef SSR_ENABLED
-#define audio_extn_ssr_init(adev, in)                 (0)
+#define audio_extn_ssr_init(in)                       (0)
 #define audio_extn_ssr_deinit()                       (0)
 #define audio_extn_ssr_update_enabled()               (0)
 #define audio_extn_ssr_get_enabled()                  (0)
 #define audio_extn_ssr_read(stream, buffer, bytes)    (0)
 #else
-int32_t audio_extn_ssr_init(struct audio_device *adev,
-                            struct stream_in *in);
+int32_t audio_extn_ssr_init(struct stream_in *in);
 int32_t audio_extn_ssr_deinit();
 void audio_extn_ssr_update_enabled();
 bool audio_extn_ssr_get_enabled();
@@ -153,7 +184,7 @@ void audio_extn_spkr_prot_calib_cancel(void *adev);
 #endif
 
 #ifndef COMPRESS_CAPTURE_ENABLED
-#define audio_extn_compr_cap_init(adev,in)                (0)
+#define audio_extn_compr_cap_init(in)                     (0)
 #define audio_extn_compr_cap_enabled()                    (0)
 #define audio_extn_compr_cap_format_supported(format)     (0)
 #define audio_extn_compr_cap_usecase_supported(usecase)   (0)
@@ -161,8 +192,7 @@ void audio_extn_spkr_prot_calib_cancel(void *adev);
 #define audio_extn_compr_cap_read(in, buffer, bytes)      (0)
 #define audio_extn_compr_cap_deinit()                     (0)
 #else
-void audio_extn_compr_cap_init(struct audio_device *adev,
-                                    struct stream_in *in);
+void audio_extn_compr_cap_init(struct stream_in *in);
 bool audio_extn_compr_cap_enabled();
 bool audio_extn_compr_cap_format_supported(audio_format_t format);
 bool audio_extn_compr_cap_usecase_supported(audio_usecase_t usecase);
@@ -201,7 +231,7 @@ void audio_extn_dolby_send_ddp_endp_params(struct audio_device *adev);
 
 #ifndef HFP_ENABLED
 #define audio_extn_hfp_is_active(adev)                  (0)
-#define audio_extn_hfp_get_usecase()                    (0)
+#define audio_extn_hfp_get_usecase()                    (-1)
 #else
 bool audio_extn_hfp_is_active(struct audio_device *adev);
 audio_usecase_t audio_extn_hfp_get_usecase();

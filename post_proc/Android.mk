@@ -1,7 +1,11 @@
-
+ifeq ($(strip $(AUDIO_FEATURE_ENABLED_EXTN_POST_PROC)),true)
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
+
+ifeq ($(strip $(AUDIO_FEATURE_ENABLED_PROXY_DEVICE)),true)
+    LOCAL_CFLAGS += -DAFE_PROXY_ENABLED
+endif
 
 LOCAL_SRC_FILES:= \
 	bundle.c \
@@ -31,3 +35,5 @@ LOCAL_C_INCLUDES := \
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
+
+endif

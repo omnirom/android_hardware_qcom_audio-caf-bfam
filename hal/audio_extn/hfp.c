@@ -46,7 +46,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.*/
 #define AUDIO_PARAMETER_KEY_HFP_VOLUME "hfp_volume"
 
 static int32_t start_hfp(struct audio_device *adev,
-                               struct str_parms *parms);
+                               struct str_parms *parms __unused);
 
 static int32_t stop_hfp(struct audio_device *adev);
 
@@ -89,6 +89,7 @@ static int32_t hfp_set_volume(struct audio_device *adev, float value)
     ALOGV("%s: entry", __func__);
     ALOGD("%s: (%f)\n", __func__, value);
 
+    hfpmod.hfp_volume = value;
     if (value < 0.0) {
         ALOGW("%s: (%f) Under 0.0, assuming 0.0\n", __func__, value);
         value = 0.0;
@@ -97,7 +98,6 @@ static int32_t hfp_set_volume(struct audio_device *adev, float value)
         ALOGW("%s: Volume brought with in range (%f)\n", __func__, value);
     }
     vol  = lrint((value * 0x2000) + 0.5);
-    hfpmod.hfp_volume = value;
 
     if (!hfpmod.is_hfp_running) {
         ALOGV("%s: HFP not active, ignoring set_hfp_volume call", __func__);
@@ -121,7 +121,7 @@ static int32_t hfp_set_volume(struct audio_device *adev, float value)
 }
 
 static int32_t start_hfp(struct audio_device *adev,
-                               struct str_parms *parms)
+                               struct str_parms *parms __unused)
 {
     int32_t i, ret = 0;
     struct audio_usecase *uc_info;
@@ -298,12 +298,10 @@ void audio_extn_hfp_set_parameters(struct audio_device *adev, struct str_parms *
            if (rate == 8000){
                hfpmod.ucid = USECASE_AUDIO_HFP_SCO;
                pcm_config_hfp.rate = rate;
-           }
-           else if (rate == 16000){
+           } else if (rate == 16000){
                hfpmod.ucid = USECASE_AUDIO_HFP_SCO_WB;
                pcm_config_hfp.rate = rate;
-           }
-           else
+           } else
                ALOGE("Unsupported rate..");
     }
 

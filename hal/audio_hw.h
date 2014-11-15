@@ -26,6 +26,7 @@
 #include <tinycompress/tinycompress.h>
 
 #include <audio_route/audio_route.h>
+#include "audio_defs.h"
 #include "voice.h"
 
 #define VISUALIZER_LIBRARY_PATH "/system/lib/soundfx/libqcomvisualizer.so"
@@ -47,6 +48,9 @@
 
 #define MAX_SUPPORTED_CHANNEL_MASKS 2
 #define DEFAULT_HDMI_OUT_CHANNELS   2
+
+#define SND_CARD_STATE_OFFLINE 0
+#define SND_CARD_STATE_ONLINE 1
 
 typedef int snd_device_t;
 
@@ -97,6 +101,10 @@ typedef enum {
 
     USECASE_AUDIO_SPKR_CALIB_RX,
     USECASE_AUDIO_SPKR_CALIB_TX,
+
+    USECASE_AUDIO_PLAYBACK_AFE_PROXY,
+    USECASE_AUDIO_RECORD_AFE_PROXY,
+
     AUDIO_USECASE_MAX
 } audio_usecase_t;
 
@@ -139,6 +147,7 @@ struct stream_out {
     struct pcm *pcm;
     struct compress *compr;
     int standby;
+    bool voip_out_avail;
     int pcm_device_id;
     unsigned int sample_rate;
     audio_channel_mask_t channel_mask;
@@ -174,9 +183,10 @@ struct stream_in {
     struct pcm_config config;
     struct pcm *pcm;
     int standby;
+    bool voip_in_avail;
     int source;
     int pcm_device_id;
-    int device;
+    audio_devices_t device;
     audio_channel_mask_t channel_mask;
     audio_usecase_t usecase;
     bool enable_aec;
@@ -209,6 +219,11 @@ struct audio_usecase {
     union stream_ptr stream;
 };
 
+struct sound_card_status {
+    pthread_mutex_t lock;
+    int state;
+};
+
 struct audio_device {
     struct audio_hw_device device;
     pthread_mutex_t lock; /* see note below on mutex acquisition order */
@@ -217,6 +232,8 @@ struct audio_device {
     audio_devices_t out_device;
     struct stream_in *active_input;
     struct stream_out *primary_output;
+    struct stream_out *voice_tx_output;
+    struct stream_out *current_call_output;
     bool bluetooth_nrec;
     bool screen_off;
     int *snd_dev_ref_cnt;
@@ -237,6 +254,8 @@ struct audio_device {
     void *offload_effects_lib;
     int (*offload_effects_start_output)(audio_io_handle_t, int);
     int (*offload_effects_stop_output)(audio_io_handle_t, int);
+
+    struct sound_card_status snd_card_status;
 };
 
 int select_devices(struct audio_device *adev,
@@ -255,6 +274,8 @@ struct audio_usecase *get_usecase_from_list(struct audio_device *adev,
                                                    audio_usecase_t uc_id);
 
 int pcm_ioctl(struct pcm *pcm, int request, ...);
+
+int get_snd_card_state(struct audio_device *adev);
 
 #define LITERAL_TO_STRING(x) #x
 #define CHECK(condition) LOG_ALWAYS_FATAL_IF(!(condition), "%s",\
