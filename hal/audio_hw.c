@@ -224,7 +224,7 @@ static int check_and_set_gapless_mode(struct audio_device *adev) {
 static bool is_supported_format(audio_format_t format)
 {
     if (format == AUDIO_FORMAT_MP3 ||
-#ifdef EXTN_OFFLOAD_ENABLED
+#ifdef PCM_OFFLOAD_ENABLED
         format == AUDIO_FORMAT_PCM_16_BIT_OFFLOAD ||
         format == AUDIO_FORMAT_PCM_24_BIT_OFFLOAD ||
 #endif
@@ -247,7 +247,7 @@ static int get_snd_codec_id(audio_format_t format)
     case AUDIO_FORMAT_AAC:
         id = SND_AUDIOCODEC_AAC;
         break;
-#ifdef EXTN_OFFLOAD_ENABLED
+#ifdef PCM_OFFLOAD_ENABLED
     case AUDIO_FORMAT_PCM_OFFLOAD:
         id = SND_AUDIOCODEC_PCM;
         break;
@@ -1475,7 +1475,7 @@ static int parse_compress_metadata(struct stream_out *out, struct str_parms *par
         return -EINVAL;
     }
 
-#ifdef EXTN_OFFLOAD_ENABLED
+#ifdef PCM_OFFLOAD_ENABLED
     ret = str_parms_get_str(parms, AUDIO_OFFLOAD_CODEC_FORMAT, value, sizeof(value));
     if (ret >= 0) {
         if (atoi(value) == SND_AUDIOSTREAMFORMAT_MP4ADTS) {
@@ -2424,7 +2424,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         else
             out->compr_config.codec->id =
                 get_snd_codec_id(config->offload_info.format);
-#ifdef EXTN_OFFLOAD_ENABLED
+#ifdef PCM_OFFLOAD_ENABLED
         if (audio_is_offload_pcm(config->offload_info.format)) {
             out->compr_config.fragment_size =
                        platform_get_pcm_offload_buffer_size(&config->offload_info);
@@ -2444,7 +2444,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
         out->compr_config.codec->ch_out = out->compr_config.codec->ch_in;
         out->compr_config.codec->format = SND_AUDIOSTREAMFORMAT_RAW;
 
-#ifdef EXTN_OFFLOAD_ENABLED
+#ifdef PCM_OFFLOAD_ENABLED
         if (config->offload_info.format == AUDIO_FORMAT_PCM_16_BIT_OFFLOAD)
             out->compr_config.codec->format = SNDRV_PCM_FORMAT_S16_LE;
         else if(config->offload_info.format == AUDIO_FORMAT_PCM_24_BIT_OFFLOAD)
