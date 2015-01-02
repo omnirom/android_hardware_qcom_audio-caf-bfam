@@ -165,6 +165,10 @@ ifeq ($(strip $(AUDIO_FEATURE_PCM_IOCTL_ENABLED)),true)
     LOCAL_CFLAGS += -DPCM_IOCTL_ENABLED
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_DISABLED_HWDEP_CAL)),true)
+    LOCAL_CFLAGS += -DHWDEP_CAL_DISABLED
+endif
+
 LOCAL_COPY_HEADERS_TO   := mm-audio
 LOCAL_COPY_HEADERS      := audio_extn/audio_defs.h
 
