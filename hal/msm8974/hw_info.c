@@ -301,5 +301,5 @@ void hw_info_append_hw_type(void *hw_info, snd_device_t snd_device,
             }
         }
     }
-    ALOGD("%s : device_name = %s", __func__,device_name);
+    ALOGV("%s : device_name = %s", __func__,device_name);
 }

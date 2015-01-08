@@ -318,7 +318,7 @@ void *capture_thread_loop(void *arg)
     int ret;
     int retry_num = 0;
 
-    ALOGD("thread enter");
+    ALOGV("thread enter");
 
     prctl(PR_SET_NAME, (unsigned long)"visualizer capture", 0, 0, 0);
 
@@ -352,7 +352,7 @@ void *capture_thread_loop(void *arg)
                         configure_proxy_capture(mixer, 0);
                     } else {
                         capture_enabled = true;
-                        ALOGD("%s: capture ENABLED", __func__);
+                        ALOGV("%s: capture ENABLED", __func__);
                     }
                 }
             }
@@ -361,7 +361,7 @@ void *capture_thread_loop(void *arg)
                 if (pcm != NULL)
                     pcm_close(pcm);
                 configure_proxy_capture(mixer, 0);
-                ALOGD("%s: capture DISABLED", __func__);
+                ALOGV("%s: capture DISABLED", __func__);
                 capture_enabled = false;
             }
             pthread_cond_wait(&cond, &lock);
@@ -403,7 +403,7 @@ void *capture_thread_loop(void *arg)
     mixer_close(mixer);
     pthread_mutex_unlock(&lock);
 
-    ALOGD("thread exit");
+    ALOGV("thread exit");
 
     return NULL;
 }
