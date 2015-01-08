@@ -799,7 +799,7 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
                                                                out_snd_device,
                                                                in_snd_device);
 
-    ALOGD("%s: done",__func__);
+    ALOGV("%s: done",__func__);
 
     return status;
 }
@@ -2570,7 +2570,7 @@ static void adev_close_output_stream(struct audio_hw_device *dev __unused,
     struct audio_device *adev = out->dev;
     int ret = 0;
 
-    ALOGD("%s: enter:stream_handle(%p)",__func__, out);
+    ALOGV("%s: enter:stream_handle(%p)",__func__, out);
 
     if (out->usecase == USECASE_COMPRESS_VOIP_CALL) {
         pthread_mutex_lock(&adev->lock);
@@ -2615,14 +2615,14 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             struct listnode *node;
             struct audio_usecase *usecase;
 
-            ALOGD("Received sound card OFFLINE status");
+            ALOGV("Received sound card OFFLINE status");
             set_snd_card_state(adev,SND_CARD_STATE_OFFLINE);
 
             pthread_mutex_lock(&adev->lock);
             //close compress session on OFFLINE status
             usecase = get_usecase_from_list(adev,USECASE_AUDIO_PLAYBACK_OFFLOAD);
             if (usecase && usecase->stream.out) {
-                ALOGD(" %s closing compress session on OFFLINE state", __func__);
+                ALOGV(" %s closing compress session on OFFLINE state", __func__);
 
                 struct stream_out *out = usecase->stream.out;
 
@@ -2631,7 +2631,7 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             } else
                 pthread_mutex_unlock(&adev->lock);
         } else if (strstr(snd_card_status, "ONLINE")) {
-            ALOGD("Received sound card ONLINE status");
+            ALOGV("Received sound card ONLINE status");
             set_snd_card_state(adev,SND_CARD_STATE_ONLINE);
         }
     }
@@ -2938,7 +2938,7 @@ static void adev_close_input_stream(struct audio_hw_device *dev __unused,
     struct stream_in *in = (struct stream_in *)stream;
     struct audio_device *adev = in->dev;
 
-    ALOGD("%s: enter:stream_handle(%p)",__func__, in);
+    ALOGV("%s: enter:stream_handle(%p)",__func__, in);
 
     if (in->usecase == USECASE_COMPRESS_VOIP_CALL) {
         pthread_mutex_lock(&adev->lock);
@@ -2994,15 +2994,15 @@ static int adev_open(const hw_module_t *module, const char *name,
 {
     int i, ret;
 
-    ALOGD("%s: enter", __func__);
+    ALOGV("%s: enter", __func__);
     if (strcmp(name, AUDIO_HARDWARE_INTERFACE) != 0) return -EINVAL;
 
     pthread_mutex_lock(&adev_init_lock);
     if (audio_device_ref_count != 0){
             *device = &adev->device.common;
             audio_device_ref_count++;
-            ALOGD("%s: returning existing instance of adev", __func__);
-            ALOGD("%s: exit", __func__);
+            ALOGV("%s: returning existing instance of adev", __func__);
+            ALOGV("%s: exit", __func__);
             pthread_mutex_unlock(&adev_init_lock);
             return 0;
     }
