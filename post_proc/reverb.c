@@ -18,7 +18,7 @@
  */
 
 #define LOG_TAG "offload_effect_reverb"
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 
 #include <cutils/list.h>
 #include <cutils/log.h>
