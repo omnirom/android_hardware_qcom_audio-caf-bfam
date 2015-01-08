@@ -28,7 +28,7 @@
  */
 
 #define LOG_TAG "offload_effect_api"
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 //#define VERY_VERY_VERBOSE_LOGGING
 #ifdef VERY_VERY_VERBOSE_LOGGING
 #define ALOGVV ALOGV
