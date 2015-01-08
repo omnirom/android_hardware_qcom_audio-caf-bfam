@@ -746,7 +746,7 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
         return 0;
     }
 
-    ALOGD("%s: out_snd_device(%d: %s) in_snd_device(%d: %s)", __func__,
+    ALOGV("%s: out_snd_device(%d: %s) in_snd_device(%d: %s)", __func__,
           out_snd_device, platform_get_snd_device_name(out_snd_device),
           in_snd_device,  platform_get_snd_device_name(in_snd_device));
 
@@ -803,7 +803,7 @@ int select_devices(struct audio_device *adev, audio_usecase_t uc_id)
                                                                out_snd_device,
                                                                in_snd_device);
 
-    ALOGD("%s: done",__func__);
+    ALOGV("%s: done",__func__);
 
     return status;
 }
@@ -850,7 +850,7 @@ int start_input_stream(struct stream_in *in)
     int snd_card_status = get_snd_card_state(adev);
 
     in->usecase = platform_update_usecase_from_source(in->source,in->usecase);
-    ALOGD("%s: enter: stream(%p)usecase(%d: %s)",
+    ALOGV("%s: enter: stream(%p)usecase(%d: %s)",
           __func__, &in->stream, in->usecase, use_case_table[in->usecase]);
 
     if (SND_CARD_STATE_OFFLINE == snd_card_status) {
@@ -924,7 +924,7 @@ error_open:
 
 error_config:
     adev->active_input = NULL;
-    ALOGD("%s: exit: status(%d)", __func__, ret);
+    ALOGV("%s: exit: status(%d)", __func__, ret);
 
     return ret;
 }
@@ -1088,18 +1088,18 @@ static bool allow_hdmi_channel_config(struct audio_device *adev)
              * max channels of remaining use cases.
              */
             if (usecase->id == USECASE_VOICE_CALL) {
-                ALOGD("%s: voice call is active, no change in HDMI channels",
+                ALOGV("%s: voice call is active, no change in HDMI channels",
                       __func__);
                 ret = false;
                 break;
             } else if (usecase->id == USECASE_AUDIO_PLAYBACK_MULTI_CH) {
-                ALOGD("%s: multi channel playback is active, "
+                ALOGV("%s: multi channel playback is active, "
                       "no change in HDMI channels", __func__);
                 ret = false;
                 break;
             } else if (usecase->id == USECASE_AUDIO_PLAYBACK_OFFLOAD &&
                        audio_channel_count_from_out_mask(usecase->stream.out->channel_mask) > 2) {
-                ALOGD("%s: multi-channel(%x) compress offload playback is active, "
+                ALOGV("%s: multi-channel(%x) compress offload playback is active, "
                       "no change in HDMI channels", __func__, usecase->stream.out->channel_mask);
                 ret = false;
                 break;
@@ -1120,7 +1120,7 @@ static int check_and_set_hdmi_channels(struct audio_device *adev,
         return 0;
 
     if (channels == adev->cur_hdmi_channels) {
-        ALOGD("%s: Requested channels are same as current channels(%d)", __func__, channels);
+        ALOGV("%s: Requested channels are same as current channels(%d)", __func__, channels);
         return 0;
     }
 
@@ -1203,7 +1203,7 @@ int start_output_stream(struct stream_out *out)
     struct audio_device *adev = out->dev;
     int snd_card_status = get_snd_card_state(adev);
 
-    ALOGD("%s: enter: stream(%p)usecase(%d: %s) devices(%#x)",
+    ALOGV("%s: enter: stream(%p)usecase(%d: %s) devices(%#x)",
           __func__, &out->stream, out->usecase, use_case_table[out->usecase],
           out->devices);
 
@@ -1234,7 +1234,7 @@ int start_output_stream(struct stream_out *out)
         property_get("audio.use.hdmi.sink.cap", prop_value, NULL);
         if (!strncmp("true", prop_value, 4)) {
             sink_channels = platform_edid_get_max_channels(out->dev->platform);
-            ALOGD("%s: set HDMI channel count[%d] based on sink capability", __func__, sink_channels);
+            ALOGV("%s: set HDMI channel count[%d] based on sink capability", __func__, sink_channels);
             check_and_set_hdmi_channels(adev, sink_channels);
         } else {
             if (out->usecase == USECASE_AUDIO_PLAYBACK_OFFLOAD)
@@ -1419,13 +1419,13 @@ static int out_standby(struct audio_stream *stream)
     struct stream_out *out = (struct stream_out *)stream;
     struct audio_device *adev = out->dev;
 
-    ALOGD("%s: enter: stream (%p) usecase(%d: %s)", __func__,
+    ALOGV("%s: enter: stream (%p) usecase(%d: %s)", __func__,
           stream, out->usecase, use_case_table[out->usecase]);
     if (out->usecase == USECASE_COMPRESS_VOIP_CALL) {
         /* Ignore standby in case of voip call because the voip output
          * stream is closed in adev_close_output_stream()
          */
-        ALOGD("%s: Ignore Standby in VOIP call", __func__);
+        ALOGV("%s: Ignore Standby in VOIP call", __func__);
         return 0;
     }
 
@@ -1534,7 +1534,7 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
     int ret = 0, val = 0, err;
     bool select_new_device = false;
 
-    ALOGD("%s: enter: usecase(%d: %s) kvpairs: %s",
+    ALOGV("%s: enter: usecase(%d: %s) kvpairs: %s",
           __func__, out->usecase, use_case_table[out->usecase], kvpairs);
     parms = str_parms_create_str(kvpairs);
     err = str_parms_get_str(parms, AUDIO_PARAMETER_STREAM_ROUTING, value, sizeof(value));
@@ -1718,12 +1718,12 @@ static ssize_t out_write(struct audio_stream_out *stream, const void *buffer,
 
     if (SND_CARD_STATE_OFFLINE == snd_scard_state) {
         if (out->pcm) {
-            ALOGD(" %s: sound card is not active/SSR state", __func__);
+            ALOGV(" %s: sound card is not active/SSR state", __func__);
             ret= -ENETRESET;
             goto exit;
         } else if (out->usecase == USECASE_AUDIO_PLAYBACK_OFFLOAD) {
             //during SSR for compress usecase we should return error to flinger
-            ALOGD(" copl %s: sound card is not active/SSR state", __func__);
+            ALOGV(" copl %s: sound card is not active/SSR state", __func__);
             pthread_mutex_unlock(&out->lock);
             return -ENETRESET;
         }
@@ -2048,7 +2048,7 @@ static int in_standby(struct audio_stream *stream)
     struct stream_in *in = (struct stream_in *)stream;
     struct audio_device *adev = in->dev;
     int status = 0;
-    ALOGD("%s: enter: stream (%p) usecase(%d: %s)", __func__,
+    ALOGV("%s: enter: stream (%p) usecase(%d: %s)", __func__,
           stream, in->usecase, use_case_table[in->usecase]);
 
 
@@ -2091,7 +2091,7 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
     char value[32];
     int ret = 0, val = 0, err;
 
-    ALOGD("%s: enter: kvpairs=%s", __func__, kvpairs);
+    ALOGV("%s: enter: kvpairs=%s", __func__, kvpairs);
     parms = str_parms_create_str(kvpairs);
 
     pthread_mutex_lock(&in->lock);
@@ -2175,7 +2175,7 @@ static ssize_t in_read(struct audio_stream_in *stream, void *buffer,
 
     if (in->pcm) {
         if(SND_CARD_STATE_OFFLINE == snd_scard_state) {
-            ALOGD(" %s: sound card is not active/SSR state", __func__);
+            ALOGV(" %s: sound card is not active/SSR state", __func__);
             ret= -ENETRESET;
             goto exit;
         }
@@ -2313,7 +2313,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 
     out = (struct stream_out *)calloc(1, sizeof(struct stream_out));
 
-    ALOGD("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x) flags(%#x)\
+    ALOGV("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x) flags(%#x)\
         stream_handle(%p)",__func__, config->sample_rate, config->channel_mask,
         devices, flags, &out->stream);
 
@@ -2567,7 +2567,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
     config->sample_rate = out->stream.common.get_sample_rate(&out->stream.common);
 
     *stream_out = &out->stream;
-    ALOGD("%s: Stream (%p) picks up usecase (%s)", __func__, &out->stream,
+    ALOGV("%s: Stream (%p) picks up usecase (%s)", __func__, &out->stream,
         use_case_table[out->usecase]);
     ALOGV("%s: exit", __func__);
     return 0;
@@ -2575,7 +2575,7 @@ static int adev_open_output_stream(struct audio_hw_device *dev,
 error_open:
     free(out);
     *stream_out = NULL;
-    ALOGD("%s: exit: ret %d", __func__, ret);
+    ALOGV("%s: exit: ret %d", __func__, ret);
     return ret;
 }
 
@@ -2586,7 +2586,7 @@ static void adev_close_output_stream(struct audio_hw_device *dev __unused,
     struct audio_device *adev = out->dev;
     int ret = 0;
 
-    ALOGD("%s: enter:stream_handle(%p)",__func__, out);
+    ALOGV("%s: enter:stream_handle(%p)",__func__, out);
 
     if (out->usecase == USECASE_COMPRESS_VOIP_CALL) {
         pthread_mutex_lock(&adev->lock);
@@ -2621,7 +2621,7 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
     int ret;
     int status = 0;
 
-    ALOGD("%s: enter: %s", __func__, kvpairs);
+    ALOGV("%s: enter: %s", __func__, kvpairs);
     parms = str_parms_create_str(kvpairs);
 
     ret = str_parms_get_str(parms, "SND_CARD_STATUS", value, sizeof(value));
@@ -2631,14 +2631,14 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             struct listnode *node;
             struct audio_usecase *usecase;
 
-            ALOGD("Received sound card OFFLINE status");
+            ALOGV("Received sound card OFFLINE status");
             set_snd_card_state(adev,SND_CARD_STATE_OFFLINE);
 
             pthread_mutex_lock(&adev->lock);
             //close compress session on OFFLINE status
             usecase = get_usecase_from_list(adev,USECASE_AUDIO_PLAYBACK_OFFLOAD);
             if (usecase && usecase->stream.out) {
-                ALOGD(" %s closing compress session on OFFLINE state", __func__);
+                ALOGV(" %s closing compress session on OFFLINE state", __func__);
 
                 struct stream_out *out = usecase->stream.out;
 
@@ -2647,7 +2647,7 @@ static int adev_set_parameters(struct audio_hw_device *dev, const char *kvpairs)
             } else
                 pthread_mutex_unlock(&adev->lock);
         } else if (strstr(snd_card_status, "ONLINE")) {
-            ALOGD("Received sound card ONLINE status");
+            ALOGV("Received sound card ONLINE status");
             set_snd_card_state(adev,SND_CARD_STATE_ONLINE);
         }
     }
@@ -2807,7 +2807,7 @@ static int adev_set_mode(struct audio_hw_device *dev, audio_mode_t mode)
     struct audio_device *adev = (struct audio_device *)dev;
     pthread_mutex_lock(&adev->lock);
     if (adev->mode != mode) {
-        ALOGD("%s mode %d\n", __func__, mode);
+        ALOGV("%s mode %d\n", __func__, mode);
         adev->mode = mode;
     }
     pthread_mutex_unlock(&adev->lock);
@@ -2819,7 +2819,7 @@ static int adev_set_mic_mute(struct audio_hw_device *dev, bool state)
     int ret;
 
     pthread_mutex_lock(&adev->lock);
-    ALOGD("%s state %d\n", __func__, state);
+    ALOGV("%s state %d\n", __func__, state);
     ret = voice_set_mic_mute((struct audio_device *)dev, state);
     pthread_mutex_unlock(&adev->lock);
 
@@ -2860,7 +2860,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
         return -EINVAL;
 
     in = (struct stream_in *)calloc(1, sizeof(struct stream_in));
-    ALOGD("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x)\
+    ALOGV("%s: enter: sample_rate(%d) channel_mask(%#x) devices(%#x)\
         stream_handle(%p)",__func__, config->sample_rate, config->channel_mask,
         devices, &in->stream);
 
@@ -2954,7 +2954,7 @@ static void adev_close_input_stream(struct audio_hw_device *dev __unused,
     struct stream_in *in = (struct stream_in *)stream;
     struct audio_device *adev = in->dev;
 
-    ALOGD("%s: enter:stream_handle(%p)",__func__, in);
+    ALOGV("%s: enter:stream_handle(%p)",__func__, in);
 
     if (in->usecase == USECASE_COMPRESS_VOIP_CALL) {
         pthread_mutex_lock(&adev->lock);
@@ -3010,15 +3010,15 @@ static int adev_open(const hw_module_t *module, const char *name,
 {
     int i, ret;
 
-    ALOGD("%s: enter", __func__);
+    ALOGV("%s: enter", __func__);
     if (strcmp(name, AUDIO_HARDWARE_INTERFACE) != 0) return -EINVAL;
 
     pthread_mutex_lock(&adev_init_lock);
     if (audio_device_ref_count != 0){
             *device = &adev->device.common;
             audio_device_ref_count++;
-            ALOGD("%s: returning existing instance of adev", __func__);
-            ALOGD("%s: exit", __func__);
+            ALOGV("%s: returning existing instance of adev", __func__);
+            ALOGV("%s: exit", __func__);
             pthread_mutex_unlock(&adev_init_lock);
             return 0;
     }
