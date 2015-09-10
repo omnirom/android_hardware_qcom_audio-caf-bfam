@@ -169,6 +169,10 @@ ifeq ($(strip $(AUDIO_FEATURE_DISABLED_HWDEP_CAL)),true)
     LOCAL_CFLAGS += -DHWDEP_CAL_DISABLED
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_ENABLE_I2S_SPEAKER)),true)
+    LOCAL_CFLAGS += -DI2S_SPEAKER_ENABLED
+endif
+
 LOCAL_COPY_HEADERS_TO   := mm-audio
 LOCAL_COPY_HEADERS      := audio_extn/audio_defs.h
 
