@@ -323,7 +323,11 @@ int enable_audio_route(struct audio_device *adev,
 #endif
     strcpy(mixer_path, use_case_table[usecase->id]);
     platform_add_backend_name(mixer_path, snd_device);
+#ifdef I2S_SPEAKER_ENABLED
+    ALOGD("%s: apply mixer and update path: %s", __func__, mixer_path);
+#else
     ALOGV("%s: apply mixer and update path: %s", __func__, mixer_path);
+#endif
     audio_route_apply_and_update_path(adev->audio_route, mixer_path);
     ALOGV("%s: exit", __func__);
     return 0;
