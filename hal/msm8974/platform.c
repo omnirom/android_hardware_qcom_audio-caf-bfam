@@ -796,6 +796,12 @@ void platform_add_backend_name(char *mixer_path, snd_device_t snd_device)
         strlcat(mixer_path, " capture-fm", MIXER_PATH_MAX_LENGTH);
     else if (snd_device == SND_DEVICE_OUT_TRANSMISSION_FM)
         strlcat(mixer_path, " transmission-fm", MIXER_PATH_MAX_LENGTH);
+#ifdef I2S_SPEAKER_ENABLED
+    else if (snd_device == SND_DEVICE_OUT_SPEAKER)
+        strlcat(mixer_path, " i2s", MIXER_PATH_MAX_LENGTH);
+    else if (snd_device == SND_DEVICE_OUT_VOICE_SPEAKER)
+        strlcat(mixer_path, " i2s", MIXER_PATH_MAX_LENGTH);
+#endif
 }
 
 int platform_get_pcm_device_id(audio_usecase_t usecase, int device_type)
