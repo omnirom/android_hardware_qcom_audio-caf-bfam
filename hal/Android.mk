@@ -23,6 +23,10 @@ ifneq ($(filter apq8084,$(TARGET_BOARD_PLATFORM)),)
 endif
 endif
 
+ifeq ($(strip $(TARGET_LOAD_MIXER_PATHS_DYNAMICALLY)),true)
+  LOCAL_CFLAGS += -DTARGET_LOAD_MIXER_PATHS_DYNAMICALLY
+endif
+
 LOCAL_SRC_FILES := \
 	audio_hw.c \
 	voice.c \

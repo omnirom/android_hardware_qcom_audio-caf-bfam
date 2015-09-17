@@ -41,8 +41,16 @@
 
 #define SOUND_TRIGGER_DEVICE_HANDSET_MONO_LOW_POWER_ACDB_ID (100)
 
+#ifndef TARGET_LOAD_MIXER_PATHS_DYNAMICALLY
 #define MIXER_XML_PATH "/system/etc/mixer_paths.xml"
 #define MIXER_XML_PATH_AUXPCM "/system/etc/mixer_paths_auxpcm.xml"
+#else
+#define MIXER_XML_PATH_PREFIX "/system/etc/"
+#define MIXER_PATH_DEF "mixer_paths.xml"
+#define MIXER_PATH_AUX_DEF "mixer_paths_auxpcm.xml"
+#define MIXER_PROP_SIZE 128
+#endif
+
 #define LIB_ACDB_LOADER "libacdbloader.so"
 #define AUDIO_DATA_BLOCK_MIXER_CTL "HDMI EDID"
 
@@ -573,6 +581,11 @@ void *platform_init(struct audio_device *adev)
     struct platform_data *my_data = NULL;
     int retry_num = 0, snd_card_num = 0;
     const char *snd_card_name;
+#ifdef TARGET_LOAD_MIXER_PATHS_DYNAMICALLY
+    char d_mixer_paths_xml[MIXER_PROP_SIZE];
+    char d_mixer_paths_aux_xml[MIXER_PROP_SIZE];
+    char *d_mixer_paths_final, *d_mixer_paths_aux_final;
+#endif
 
     my_data = calloc(1, sizeof(struct platform_data));
 
@@ -600,10 +613,32 @@ void *platform_init(struct audio_device *adev)
         if (!my_data->hw_info) {
             ALOGE("%s: Failed to init hardware info", __func__);
         } else {
+#ifndef TARGET_LOAD_MIXER_PATHS_DYNAMICALLY
             if (audio_extn_read_xml(adev, snd_card_num, MIXER_XML_PATH,
                                     MIXER_XML_PATH_AUXPCM) == -ENOSYS)
                 adev->audio_route = audio_route_init(snd_card_num,
                                                  MIXER_XML_PATH);
+#else
+            property_get("audio.mixer_paths.config",d_mixer_paths_xml,MIXER_PATH_DEF);
+            d_mixer_paths_final = (char*)malloc((strlen(d_mixer_paths_xml) + strlen(MIXER_XML_PATH_PREFIX)) + 1);
+            strcat(d_mixer_paths_final,MIXER_XML_PATH_PREFIX);
+            strcat(d_mixer_paths_final,d_mixer_paths_xml);
+
+            property_get("audio.mixer_paths_aux.config",d_mixer_paths_aux_xml,MIXER_PATH_AUX_DEF);
+            d_mixer_paths_aux_final = (char*)malloc((strlen(d_mixer_paths_aux_xml) + strlen(MIXER_XML_PATH_PREFIX)) + 1);
+            strcat(d_mixer_paths_aux_final,MIXER_XML_PATH_PREFIX);
+            strcat(d_mixer_paths_aux_final,d_mixer_paths_aux_xml);
+
+            if (audio_extn_read_xml(adev, snd_card_num, d_mixer_paths_final,
+                                    d_mixer_paths_aux_final) == -ENOSYS)
+                adev->audio_route = audio_route_init(snd_card_num,
+                                                 d_mixer_paths_final);
+
+            free(d_mixer_paths_final);
+            free(d_mixer_paths_aux_final);
+            d_mixer_paths_aux_final = NULL;
+            d_mixer_paths_final = NULL;
+#endif
             if (!adev->audio_route) {
                 ALOGE("%s: Failed to init audio route controls, aborting.",
                        __func__);
