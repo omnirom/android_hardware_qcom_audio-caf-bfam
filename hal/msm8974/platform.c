@@ -41,8 +41,11 @@
 
 #define SOUND_TRIGGER_DEVICE_HANDSET_MONO_LOW_POWER_ACDB_ID (100)
 
+#ifndef TARGET_LOAD_MIXER_PATHS_DYNAMICALLY
 #define MIXER_XML_PATH "/system/etc/mixer_paths.xml"
 #define MIXER_XML_PATH_AUXPCM "/system/etc/mixer_paths_auxpcm.xml"
+#endif
+
 #define LIB_ACDB_LOADER "libacdbloader.so"
 #define AUDIO_DATA_BLOCK_MIXER_CTL "HDMI EDID"
 
@@ -600,10 +603,17 @@ void *platform_init(struct audio_device *adev)
         if (!my_data->hw_info) {
             ALOGE("%s: Failed to init hardware info", __func__);
         } else {
+#ifndef TARGET_LOAD_MIXER_PATHS_DYNAMICALLY
             if (audio_extn_read_xml(adev, snd_card_num, MIXER_XML_PATH,
                                     MIXER_XML_PATH_AUXPCM) == -ENOSYS)
                 adev->audio_route = audio_route_init(snd_card_num,
                                                  MIXER_XML_PATH);
+#else
+            if (audio_extn_read_xml(adev, snd_card_num, get_mixer_paths(),
+                                    get_mixer_paths_auxpcm()) == -ENOSYS)
+                adev->audio_route = audio_route_init(snd_card_num,
+                                                 get_mixer_paths());
+#endif
             if (!adev->audio_route) {
                 ALOGE("%s: Failed to init audio route controls, aborting.",
                        __func__);

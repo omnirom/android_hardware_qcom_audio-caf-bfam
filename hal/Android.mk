@@ -25,8 +25,14 @@ endif
 
 LOCAL_SRC_FILES := \
 	audio_hw.c \
-	voice.c \
-	$(AUDIO_PLATFORM)/platform.c
+	voice.c
+
+ifneq ($(TARGET_MIXER_PATHS_DEFINES_FILE),)
+  LOCAL_CFLAGS += -DTARGET_LOAD_MIXER_PATHS_DYNAMICALLY
+  LOCAL_SRC_FILES += ../../../../$(TARGET_MIXER_PATHS_DEFINES_FILE)
+endif
+
+  LOCAL_SRC_FILES += $(AUDIO_PLATFORM)/platform.c
 
 ifneq ($(BOARD_USES_CUSTOM_AUDIO_PLATFORM_PATH),)
     LOCAL_SRC_FILES += ../../../../$(BOARD_USES_CUSTOM_AUDIO_PLATFORM_PATH)/customplatform.c
