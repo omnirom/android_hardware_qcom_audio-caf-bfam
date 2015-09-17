@@ -173,6 +173,10 @@ ifeq ($(strip $(AUDIO_FEATURE_I2S_SPEAKER_ENABLED)),true)
     LOCAL_CFLAGS += -DI2S_SPEAKER_ENABLED
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_DYNAMIC_MIXER_PATHS)),true)
+  LOCAL_CFLAGS += -DDYNAMIC_MIXER_PATHS
+endif
+
 LOCAL_COPY_HEADERS_TO   := mm-audio
 LOCAL_COPY_HEADERS      := audio_extn/audio_defs.h
 
