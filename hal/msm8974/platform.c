@@ -41,8 +41,15 @@
 
 #define SOUND_TRIGGER_DEVICE_HANDSET_MONO_LOW_POWER_ACDB_ID (100)
 
+#ifndef DYNAMIC_MIXER_PATHS
 #define MIXER_XML_PATH "/system/etc/mixer_paths.xml"
 #define MIXER_XML_PATH_AUXPCM "/system/etc/mixer_paths_auxpcm.xml"
+#else
+#define MIXER_XML_PATH_PREFIX "/system/etc/"
+#define MIXER_PATH_DEF "mixer_paths.xml"
+#define MIXER_PATH_AUX_DEF "mixer_paths_auxpcm.xml"
+#endif
+
 #define LIB_ACDB_LOADER "libacdbloader.so"
 #define AUDIO_DATA_BLOCK_MIXER_CTL "HDMI EDID"
 
@@ -573,6 +580,11 @@ void *platform_init(struct audio_device *adev)
     struct platform_data *my_data = NULL;
     int retry_num = 0, snd_card_num = 0;
     const char *snd_card_name;
+#ifdef DYNAMIC_MIXER_PATHS
+    int rc = 0;
+    char d_mixer_paths_xml[sizeof(MIXER_XML_PATH_PREFIX) + PROPERTY_VALUE_MAX];
+    char d_mixer_paths_aux_xml[sizeof(MIXER_XML_PATH_PREFIX) + PROPERTY_VALUE_MAX];
+#endif
 
     my_data = calloc(1, sizeof(struct platform_data));
 
@@ -600,10 +612,31 @@ void *platform_init(struct audio_device *adev)
         if (!my_data->hw_info) {
             ALOGE("%s: Failed to init hardware info", __func__);
         } else {
+#ifndef DYNAMIC_MIXER_PATHS
             if (audio_extn_read_xml(adev, snd_card_num, MIXER_XML_PATH,
                                     MIXER_XML_PATH_AUXPCM) == -ENOSYS)
                 adev->audio_route = audio_route_init(snd_card_num,
                                                  MIXER_XML_PATH);
+#else
+            strcpy(d_mixer_paths_xml,MIXER_XML_PATH_PREFIX);
+
+            rc = property_get("audio.mixer_paths.config",
+                              d_mixer_paths_xml + (sizeof(MIXER_XML_PATH_PREFIX) - 1), MIXER_PATH_DEF);
+            if (!rc)
+                ALOGE("Failed to get audio.mixer_paths.config property, using default mixer paths.");
+
+            strcpy(d_mixer_paths_aux_xml,MIXER_XML_PATH_PREFIX);
+
+            rc = property_get("audio.mixer_paths_aux.config",
+                              d_mixer_paths_aux_xml + (sizeof(MIXER_XML_PATH_PREFIX) - 1), MIXER_PATH_AUX_DEF);
+            if (!rc)
+                ALOGE("Failed to get audio.mixer_paths_aux.config property, using default mixer paths auxpcm.");
+
+            if (audio_extn_read_xml(adev, snd_card_num, d_mixer_paths_xml,
+                                    d_mixer_paths_aux_xml) == -ENOSYS)
+                adev->audio_route = audio_route_init(snd_card_num,
+                                                 d_mixer_paths_xml);
+#endif
             if (!adev->audio_route) {
                 ALOGE("%s: Failed to init audio route controls, aborting.",
                        __func__);
