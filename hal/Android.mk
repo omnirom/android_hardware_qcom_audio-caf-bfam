@@ -169,6 +169,10 @@ ifeq ($(strip $(AUDIO_FEATURE_DISABLED_HWDEP_CAL)),true)
     LOCAL_CFLAGS += -DHWDEP_CAL_DISABLED
 endif
 
+ifeq ($(strip $(AUDIO_FEATURE_DYNAMIC_MIXER_PATHS)),true)
+  LOCAL_CFLAGS += -DTARGET_LOAD_MIXER_PATHS_DYNAMICALLY
+endif
+
 LOCAL_COPY_HEADERS_TO   := mm-audio
 LOCAL_COPY_HEADERS      := audio_extn/audio_defs.h
 
