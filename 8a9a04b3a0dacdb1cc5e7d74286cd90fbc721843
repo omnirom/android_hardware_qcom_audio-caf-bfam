@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8f0a54e_74079088",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 1001148
+      },
+      "writtenOn": "2015-09-23T22:40:24Z",
+      "side": 1,
+      "message": "These should take care of fallback",
+      "range": {
+        "startLine": 623,
+        "startChar": 77,
+        "endLine": 623,
+        "endChar": 91
+      },
+      "revId": "8a9a04b3a0dacdb1cc5e7d74286cd90fbc721843",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_54fc8c6c",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 630,
+      "author": {
+        "id": 1001148
+      },
+      "writtenOn": "2015-09-23T22:40:24Z",
+      "side": 1,
+      "message": "Fallback",
+      "range": {
+        "startLine": 630,
+        "startChar": 85,
+        "endLine": 630,
+        "endChar": 103
+      },
+      "revId": "8a9a04b3a0dacdb1cc5e7d74286cd90fbc721843",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
