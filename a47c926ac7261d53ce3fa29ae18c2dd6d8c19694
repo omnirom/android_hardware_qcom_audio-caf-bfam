@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8f0a54e_54936c50",
+        "filename": "hal/Android.mk",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "nitpicking: I would move it below to all the other config options",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_f499606e",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "you should use PROPERTY_VALUE_MAX instead\nso no need to define something extra",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_149de45a",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "you should use PROPERTY_VALUE_MAX instead",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_d4a65caa",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "I wouldnt use dynamic strings but just another char[PROPERTY_VALUE_MAX] this is 256 AFAIK so changes that it will be too short are very very low :)",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_b4a3d898",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "think you must check for null here if the property is undefined for some reason and fallback to the default then",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_74b550c8",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 632,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "nitpicking: dont duplicate that part but also for the default case strcpy the default paths to the char[]\nthen you can use the same code for both cases\n(if you dont need to call free afterwards :))",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_94b0d4da",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-23T19:35:15Z",
+      "side": 1,
+      "message": "you sont need to care about this if you use a static char[] :)",
+      "revId": "a47c926ac7261d53ce3fa29ae18c2dd6d8c19694",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
