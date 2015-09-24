@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d8f0a54e_b41e38bb",
+        "filename": "hal/Android.mk",
+        "patchSetId": 6
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-24T11:47:07Z",
+      "side": 1,
+      "message": "since its fine now only nitpicking is left :)\nSee all the other flags above?\nIn general they follow (mostly) this naming scheme\nAUDIO_FEATURE_PCM_IOCTL_ENABLED -\u003e  -DPCM_IOCTL_ENABLED\nSo the -D flag is the make flag without AUDIO_FEATURE_\nAUDIO_FEATURE_DYNAMIC_MIXER_PATHS -\u003e  -DTARGET_LOAD_MIXER_PATHS_DYNAMICALLY\nI would suggest to follow this also for the new flag",
+      "revId": "fec4e96e40f0fe4f8359b982ca5f4ec86464d738",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d8f0a54e_947fb4db",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-09-24T11:47:07Z",
+      "side": 1,
+      "message": "but just to be save we need to add a lenght check here\nif its \u003e then PROPERTY_VALUE_MAX to also use the fallback\nwe shouldnt follow googles faults to not checking for propper bounds :)",
+      "revId": "fec4e96e40f0fe4f8359b982ca5f4ec86464d738",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    }
+  ]
+}
