@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "d8f0a54e_7a8e592e",
+        "filename": "hal/msm8974/platform.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 1000026
+      },
+      "writtenOn": "2015-10-08T21:43:42Z",
+      "side": 1,
+      "message": "then why not just dump the used pathes at the end instead of an error for the error case",
+      "parentUuid": "d8f0a54e_9a8ebd34",
+      "revId": "2f967577d6b6492af4f8a952ad43e57e3ee3c20f",
+      "serverId": "56841c99-7c94-43d4-bf0b-cb4707e66d55",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "d8f0a54e_3a8d7136",
         "filename": "hal/msm8974/platform.c",
         "patchSetId": 11
